@@ -56,7 +56,6 @@ const ProductManagement = () => {
     active: true
   });
 
-  // Add these to your state declarations
   const [uploadingService, setUploadingService] = useState(false);
   const [uploadProgressService, setUploadProgressService] = useState(0);
   const [imagePreviewService, setImagePreviewService] = useState(null);
@@ -64,7 +63,7 @@ const ProductManagement = () => {
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [deleteType, setDeleteType] = useState(''); // 'product' or 'service'
+  const [deleteType, setDeleteType] = useState('');
   
   // Stock editing
   const lowStockThreshold = 10;
@@ -98,7 +97,6 @@ const ProductManagement = () => {
     try {
       setLoading(true);
       
-      // Fetch products
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
@@ -107,7 +105,6 @@ const ProductManagement = () => {
       if (productsError) throw productsError;
       setProducts(productsData || []);
       
-      // Fetch services
       const { data: servicesData, error: servicesError } = await supabase
         .from('services')
         .select('*')
@@ -135,13 +132,11 @@ const ProductManagement = () => {
         setUploadProgressService(0);
       }
       
-      // Create unique file name
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
       const filePath = type === 'product' ? `product-images/${fileName}` : `service-images/${fileName}`;
       const bucket = type === 'product' ? 'products' : 'services';
       
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
@@ -151,12 +146,10 @@ const ProductManagement = () => {
       
       if (uploadError) throw uploadError;
       
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(filePath);
       
-      // Update form data with image URL
       if (type === 'product') {
         setProductFormData(prev => ({
           ...prev,
@@ -192,20 +185,17 @@ const ProductManagement = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       alert('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
       return;
     }
     
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('Image size should be less than 5MB');
       return;
     }
     
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
       if (type === 'product') {
@@ -216,7 +206,6 @@ const ProductManagement = () => {
     };
     reader.readAsDataURL(file);
     
-    // Upload to storage
     const imageUrl = await uploadImage(file, type);
     if (imageUrl) {
       if (type === 'product') {
@@ -423,7 +412,7 @@ const ProductManagement = () => {
 
   // ========== STOCK FUNCTIONS ==========
   const getStockStatus = (quantity) => {
-    if (quantity === 0 || quantity === null || quantity === undefined) return { status: 'Out of Stock', color: '#ef4444' };
+    if (quantity === 0 || quantity === null || quantity === undefined) return { status: 'Out of Stock', color: '#dc2626' };
     if (quantity <= lowStockThreshold) return { status: 'Low Stock', color: '#f59e0b' };
     return { status: 'In Stock', color: '#10b981' };
   };
@@ -523,20 +512,20 @@ const ProductManagement = () => {
     const cat = category || 'other';
     
     const colors = {
-      maintenance: '#3b82f6',
-      repair: '#ef4444',
-      car_wash: '#8b5cf6',
-      tires: '#10b981',
-      inspection: '#f59e0b',
-      detailing: '#ec4899',
-      other: '#6b7280',
-      accessories: '#8b5cf6',
-      parts: '#ef4444',
-      lubricants: '#3b82f6',
-      tools: '#f59e0b',
-      electronics: '#ec4899'
+      maintenance: '#0077b6',
+      repair: '#0077b6',
+      car_wash: '#0077b6',
+      tires: '#0077b6',
+      inspection: '#0077b6',
+      detailing: '#0077b6',
+      other: '#0077b6',
+      accessories: '#0077b6',
+      parts: '#0077b6',
+      lubricants: '#0077b6',
+      tools: '#0077b6',
+      electronics: '#0077b6'
     };
-    return colors[cat] || '#6b7280';
+    return colors[cat] || '#0077b6';
   };
 
   const getCategoryName = (category) => {
@@ -549,11 +538,11 @@ const ProductManagement = () => {
   };
 
   const getDefaultServiceImage = () => {
-    return 'https://placehold.co/600x400/10b981/ffffff?text=Service';
+    return 'https://placehold.co/600x400/0077b6/ffffff?text=Service';
   };
 
   const getDefaultImage = () => {
-    return 'https://placehold.co/600x400/3b82f6/ffffff?text=No+Image';
+    return 'https://placehold.co/600x400/0077b6/ffffff?text=No+Image';
   };
 
   if (loading) {
@@ -561,7 +550,7 @@ const ProductManagement = () => {
       <div style={styles.container}>
         <div style={styles.loading}>
           <div style={styles.spinner}></div>
-          <p>Loading products & services...</p>
+          <p style={{color: '#0077b6'}}>Loading products & services...</p>
         </div>
       </div>
     );
@@ -623,19 +612,19 @@ const ProductManagement = () => {
         </button>
       </div>
 
-      {/* Product Form Modal with Image Upload */}
+      {/* Product Form Modal */}
       {showProductForm && (
         <div style={styles.modalOverlay}>
           <div style={styles.formModal}>
             <div style={styles.formHeader}>
-              <h2>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
+              <h2 style={{color: '#0077b6', margin: 0}}>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
               <button style={styles.closeButton} onClick={resetProductForm}>×</button>
             </div>
             <form onSubmit={handleProductSubmit} style={styles.form}>
               
               {/* Image Upload Section */}
               <div style={styles.imageSection}>
-                <h3 style={styles.sectionTitle}>Product Image</h3>
+                <h3 style={{...styles.sectionTitle, color: '#0077b6'}}>Product Image</h3>
                 
                 {/* Image Preview */}
                 <div style={styles.imagePreviewContainer}>
@@ -667,11 +656,12 @@ const ProductManagement = () => {
                       <div 
                         style={{
                           ...styles.progressFill,
-                          width: `${uploadProgress}%`
+                          width: `${uploadProgress}%`,
+                          background: '#0077b6'
                         }}
                       />
                     </div>
-                    <span style={styles.progressText}>{uploadProgress}% Uploading...</span>
+                    <span style={{...styles.progressText, color: '#0077b6'}}>{uploadProgress}% Uploading...</span>
                   </div>
                 )}
                 
@@ -679,8 +669,8 @@ const ProductManagement = () => {
                 <div style={styles.uploadOptions}>
                   {/* File Upload */}
                   <div style={styles.uploadOption}>
-                    <label style={styles.uploadLabel} htmlFor="productImageUpload">
-                      <FaUpload style={styles.uploadIcon} />
+                    <label style={{...styles.uploadLabel, color: '#0077b6'}} htmlFor="productImageUpload">
+                      <FaUpload style={{...styles.uploadIcon, color: '#0077b6'}} />
                       Upload Image
                     </label>
                     <input
@@ -690,15 +680,15 @@ const ProductManagement = () => {
                       onChange={(e) => handleImageUpload(e, 'product')}
                       style={styles.fileInput}
                     />
-                    <p style={styles.uploadHint}>JPG, PNG, GIF, WebP (Max 5MB)</p>
+                    <p style={{...styles.uploadHint, color: '#0077b6'}}>JPG, PNG, GIF, WebP (Max 5MB)</p>
                   </div>
                   
-                  <span style={styles.orText}>OR</span>
+                  <span style={{...styles.orText, color: '#0077b6'}}>OR</span>
                   
                   {/* URL Input */}
                   <div style={styles.uploadOption}>
-                    <label style={styles.uploadLabel}>
-                      <FaLink style={styles.uploadIcon} />
+                    <label style={{...styles.uploadLabel, color: '#0077b6'}}>
+                      <FaLink style={{...styles.uploadIcon, color: '#0077b6'}} />
                       Enter Image URL
                     </label>
                     <input
@@ -706,7 +696,7 @@ const ProductManagement = () => {
                       value={productFormData.image_url}
                       onChange={(e) => handleImageUrlChange(e.target.value, 'product')}
                       placeholder="https://example.com/image.jpg"
-                      style={styles.urlInput}
+                      style={{...styles.urlInput, borderColor: '#0077b6'}}
                     />
                   </div>
                 </div>
@@ -714,22 +704,22 @@ const ProductManagement = () => {
               
               <div style={styles.formGrid}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Product Name *</label>
+                  <label style={{...styles.label, color: '#0077b6'}}>Product Name *</label>
                   <input
                     type="text"
                     value={productFormData.name}
                     onChange={(e) => setProductFormData({...productFormData, name: e.target.value})}
-                    style={styles.input}
+                    style={{...styles.input, borderColor: '#0077b6'}}
                     required
                   />
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Category</label>
+                  <label style={{...styles.label, color: '#0077b6'}}>Category</label>
                   <select
                     value={productFormData.category}
                     onChange={(e) => setProductFormData({...productFormData, category: e.target.value})}
-                    style={styles.input}
+                    style={{...styles.input, borderColor: '#0077b6'}}
                   >
                     {productCategories.map(category => (
                       <option key={category} value={category}>
@@ -740,12 +730,12 @@ const ProductManagement = () => {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Price (₱)</label>
+                  <label style={{...styles.label, color: '#0077b6'}}>Price (₱)</label>
                   <input
                     type="number"
                     value={productFormData.price}
                     onChange={(e) => setProductFormData({...productFormData, price: e.target.value})}
-                    style={styles.input}
+                    style={{...styles.input, borderColor: '#0077b6'}}
                     step="0.01"
                     min="0"
                     required
@@ -753,12 +743,12 @@ const ProductManagement = () => {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Stock</label>
+                  <label style={{...styles.label, color: '#0077b6'}}>Stock</label>
                   <input
                     type="number"
                     value={productFormData.stock}
                     onChange={(e) => setProductFormData({...productFormData, stock: e.target.value})}
-                    style={styles.input}
+                    style={{...styles.input, borderColor: '#0077b6'}}
                     min="0"
                     required
                   />
@@ -766,11 +756,11 @@ const ProductManagement = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Description</label>
+                <label style={{...styles.label, color: '#0077b6'}}>Description</label>
                 <textarea
                   value={productFormData.description}
                   onChange={(e) => setProductFormData({...productFormData, description: e.target.value})}
-                  style={styles.textarea}
+                  style={{...styles.textarea, borderColor: '#0077b6'}}
                   rows="3"
                 />
               </div>
@@ -793,14 +783,14 @@ const ProductManagement = () => {
         <div style={styles.modalOverlay}>
           <div style={styles.formModal}>
             <div style={styles.formHeader}>
-              <h2>{editingService ? 'Edit Service' : 'Add New Service'}</h2>
+              <h2 style={{color: '#0077b6', margin: 0}}>{editingService ? 'Edit Service' : 'Add New Service'}</h2>
               <button style={styles.closeButton} onClick={resetServiceForm}>×</button>
             </div>
             <form onSubmit={handleServiceSubmit} style={styles.form}>
               
               {/* Image Upload Section */}
               <div style={styles.imageSection}>
-                <h3 style={styles.sectionTitle}>Service Image</h3>
+                <h3 style={{...styles.sectionTitle, color: '#0077b6'}}>Service Image</h3>
                 
                 {/* Image Preview */}
                 <div style={styles.imagePreviewContainer}>
@@ -832,11 +822,12 @@ const ProductManagement = () => {
                       <div 
                         style={{
                           ...styles.progressFill,
-                          width: `${uploadProgressService}%`
+                          width: `${uploadProgressService}%`,
+                          background: '#0077b6'
                         }}
                       />
                     </div>
-                    <span style={styles.progressText}>{uploadProgressService}% Uploading...</span>
+                    <span style={{...styles.progressText, color: '#0077b6'}}>{uploadProgressService}% Uploading...</span>
                   </div>
                 )}
                 
@@ -844,8 +835,8 @@ const ProductManagement = () => {
                 <div style={styles.uploadOptions}>
                   {/* File Upload */}
                   <div style={styles.uploadOption}>
-                    <label style={styles.uploadLabel} htmlFor="serviceImageUpload">
-                      <FaUpload style={styles.uploadIcon} />
+                    <label style={{...styles.uploadLabel, color: '#0077b6'}} htmlFor="serviceImageUpload">
+                      <FaUpload style={{...styles.uploadIcon, color: '#0077b6'}} />
                       Upload Image
                     </label>
                     <input
@@ -855,15 +846,15 @@ const ProductManagement = () => {
                       onChange={(e) => handleImageUpload(e, 'service')}
                       style={styles.fileInput}
                     />
-                    <p style={styles.uploadHint}>JPG, PNG, GIF, WebP (Max 5MB)</p>
+                    <p style={{...styles.uploadHint, color: '#0077b6'}}>JPG, PNG, GIF, WebP (Max 5MB)</p>
                   </div>
                   
-                  <span style={styles.orText}>OR</span>
+                  <span style={{...styles.orText, color: '#0077b6'}}>OR</span>
                   
                   {/* URL Input */}
                   <div style={styles.uploadOption}>
-                    <label style={styles.uploadLabel}>
-                      <FaLink style={styles.uploadIcon} />
+                    <label style={{...styles.uploadLabel, color: '#0077b6'}}>
+                      <FaLink style={{...styles.uploadIcon, color: '#0077b6'}} />
                       Enter Image URL
                     </label>
                     <input
@@ -871,7 +862,7 @@ const ProductManagement = () => {
                       value={serviceFormData.image_url}
                       onChange={(e) => handleImageUrlChange(e.target.value, 'service')}
                       placeholder="https://example.com/service-image.jpg"
-                      style={styles.urlInput}
+                      style={{...styles.urlInput, borderColor: '#0077b6'}}
                     />
                   </div>
                 </div>
@@ -879,22 +870,22 @@ const ProductManagement = () => {
 
               <div style={styles.formGrid}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Service Name *</label>
+                  <label style={{...styles.label, color: '#0077b6'}}>Service Name *</label>
                   <input
                     type="text"
                     value={serviceFormData.name}
                     onChange={(e) => setServiceFormData({...serviceFormData, name: e.target.value})}
-                    style={styles.input}
+                    style={{...styles.input, borderColor: '#0077b6'}}
                     required
                   />
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Category</label>
+                  <label style={{...styles.label, color: '#0077b6'}}>Category</label>
                   <select
                     value={serviceFormData.category}
                     onChange={(e) => setServiceFormData({...serviceFormData, category: e.target.value})}
-                    style={styles.input}
+                    style={{...styles.input, borderColor: '#0077b6'}}
                   >
                     {serviceCategories.map(category => (
                       <option key={category} value={category}>
@@ -905,12 +896,12 @@ const ProductManagement = () => {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Price (₱)</label>
+                  <label style={{...styles.label, color: '#0077b6'}}>Price (₱)</label>
                   <input
                     type="number"
                     value={serviceFormData.price}
                     onChange={(e) => setServiceFormData({...serviceFormData, price: e.target.value})}
-                    style={styles.input}
+                    style={{...styles.input, borderColor: '#0077b6'}}
                     step="0.01"
                     min="0"
                     required
@@ -918,12 +909,12 @@ const ProductManagement = () => {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Duration (minutes)</label>
+                  <label style={{...styles.label, color: '#0077b6'}}>Duration (minutes)</label>
                   <input
                     type="number"
                     value={serviceFormData.duration}
                     onChange={(e) => setServiceFormData({...serviceFormData, duration: e.target.value})}
-                    style={styles.input}
+                    style={{...styles.input, borderColor: '#0077b6'}}
                     min="1"
                     required
                   />
@@ -931,17 +922,17 @@ const ProductManagement = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Description</label>
+                <label style={{...styles.label, color: '#0077b6'}}>Description</label>
                 <textarea
                   value={serviceFormData.description}
                   onChange={(e) => setServiceFormData({...serviceFormData, description: e.target.value})}
-                  style={styles.textarea}
+                  style={{...styles.textarea, borderColor: '#0077b6'}}
                   rows="3"
                 />
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.checkboxLabel}>
+                <label style={{...styles.checkboxLabel, color: '#0077b6'}}>
                   <input
                     type="checkbox"
                     checked={serviceFormData.active}
@@ -969,8 +960,8 @@ const ProductManagement = () => {
       {showDeleteConfirm && itemToDelete && (
         <div style={styles.modalOverlay}>
           <div style={styles.confirmModal}>
-            <h3 style={styles.modalTitle}>Delete {deleteType === 'product' ? 'Product' : 'Service'}</h3>
-            <p style={styles.confirmMessage}>
+            <h3 style={{...styles.modalTitle, color: '#0077b6'}}>Delete {deleteType === 'product' ? 'Product' : 'Service'}</h3>
+            <p style={{...styles.confirmMessage, color: '#0077b6'}}>
               Are you sure you want to delete "{itemToDelete.name}"? This action cannot be undone.
             </p>
             <div style={styles.modalActions}>
@@ -985,13 +976,13 @@ const ProductManagement = () => {
         </div>
       )}
 
-      {/* Products List with Images */}
+      {/* Products List */}
       {activeTab === 'products' && (
         <div style={styles.itemsList}>
           {products.length === 0 ? (
             <div style={styles.emptyState}>
-              <FaBox size={48} color="#d1d5db" />
-              <p>No products found. Add your first product to get started.</p>
+              <FaBox size={48} color="#0077b6" />
+              <p style={{color: '#0077b6'}}>No products found. Add your first product to get started.</p>
             </div>
           ) : (
             <div style={styles.gridContainer}>
@@ -1023,11 +1014,11 @@ const ProductManagement = () => {
                       <div style={styles.productCategory}>
                         <div style={{
                           ...styles.categoryIcon,
-                          background: getCategoryColor(product.category || 'other')
+                          background: '#0077b6'
                         }}>
                           {getCategoryIcon(product.category || 'other')}
                         </div>
-                        <span style={styles.categoryText}>
+                        <span style={{...styles.categoryText, color: '#0077b6'}}>
                           {getCategoryName(product.category || 'other')}
                         </span>
                       </div>
@@ -1046,37 +1037,37 @@ const ProductManagement = () => {
                       </div>
                     </div>
 
-                    <h3 style={styles.productName}>{product.name}</h3>
-                    <p style={styles.productDescription}>
+                    <h3 style={{...styles.productName, color: '#0077b6'}}>{product.name}</h3>
+                    <p style={{...styles.productDescription, color: '#0077b6'}}>
                       {product.description || 'No description provided.'}
                     </p>
                     
                     <div style={styles.productDetails}>
                       <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Price:</span>
-                        <span style={styles.priceValue}>₱{product.price || 0}</span>
+                        <span style={{...styles.detailLabel, color: '#0077b6'}}>Price:</span>
+                        <span style={{...styles.priceValue, color: '#0077b6'}}>₱{product.price || 0}</span>
                       </div>
                       <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Stock:</span>
-                        <span style={styles.detailValue}>
+                        <span style={{...styles.detailLabel, color: '#0077b6'}}>Stock:</span>
+                        <span style={{...styles.detailValue, color: '#0077b6'}}>
                           {editingStock === product.id ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <input
                                 type="number"
                                 value={stockInput}
                                 onChange={(e) => setStockInput(e.target.value)}
-                                style={styles.stockInput}
+                                style={{...styles.stockInput, borderColor: '#0077b6'}}
                                 min="0"
                               />
                               <button 
                                 onClick={() => saveStockEdit(product.id)} 
-                                style={styles.smallButton}
+                                style={{...styles.smallButton, background: '#0077b6'}}
                               >
                                 <FaSave size={12} />
                               </button>
                               <button 
                                 onClick={cancelStockEdit} 
-                                style={{...styles.smallButton, background: '#6b7280'}}
+                                style={{...styles.smallButton, background: '#0077b6'}}
                               >
                                 <FaTimes size={12} />
                               </button>
@@ -1084,7 +1075,7 @@ const ProductManagement = () => {
                           ) : (
                             <span 
                               onClick={() => startEditingStock(product)} 
-                              style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                              style={{ cursor: 'pointer', textDecoration: 'underline', color: '#0077b6' }}
                             >
                               {product.stock || 0}
                             </span>
@@ -1103,7 +1094,7 @@ const ProductManagement = () => {
                           +1 Stock
                         </button>
                         <button
-                          style={{...styles.actionButton, background: '#f59e0b', padding: '6px 12px'}}
+                          style={{...styles.actionButton, background: '#10b981', padding: '6px 12px'}}
                           onClick={() => adjustStock(product.id, -1)}
                           title="Remove 1 stock"
                         >
@@ -1112,14 +1103,14 @@ const ProductManagement = () => {
                       </div>
                       <div style={styles.mainActions}>
                         <button
-                          style={{...styles.actionButton, background: '#3b82f6', padding: '8px'}}
+                          style={{...styles.actionButton, background: '#0077b6', padding: '8px'}}
                           onClick={() => handleProductEdit(product)}
                           title="Edit product"
                         >
                           <FaEdit size={14} />
                         </button>
                         <button
-                          style={{...styles.actionButton, background: '#ef4444', padding: '8px'}}
+                          style={{...styles.actionButton, background: '#0077b6', padding: '8px'}}
                           onClick={() => handleDelete(product, 'product')}
                           title="Delete product"
                         >
@@ -1140,8 +1131,8 @@ const ProductManagement = () => {
         <div style={styles.itemsList}>
           {services.length === 0 ? (
             <div style={styles.emptyState}>
-              <FaTools size={48} color="#d1d5db" />
-              <p>No services found. Add your first service to get started.</p>
+              <FaTools size={48} color="#0077b6" />
+              <p style={{color: '#0077b6'}}>No services found. Add your first service to get started.</p>
             </div>
           ) : (
             <div style={styles.gridContainer}>
@@ -1164,37 +1155,37 @@ const ProductManagement = () => {
                       <div style={styles.itemCategory}>
                         <div style={{
                           ...styles.categoryIcon,
-                          background: getCategoryColor(service.category || 'other')
+                          background: '#0077b6'
                         }}>
                           {getCategoryIcon(service.category || 'other')}
                         </div>
-                        <span style={styles.categoryText}>
+                        <span style={{...styles.categoryText, color: '#0077b6'}}>
                           {getCategoryName(service.category || 'other')}
                         </span>
                       </div>
                       <div style={styles.itemBadges}>
                         <span style={{
                           ...styles.badge,
-                          background: service.active ? '#10b981' : '#6b7280'
+                          background: service.active ? '#10b981' : '#0077b6'
                         }}>
                           {service.active ? 'Active' : 'Inactive'}
                         </span>
                       </div>
                     </div>
 
-                    <h3 style={styles.itemName}>{service.name}</h3>
-                    <p style={styles.itemDescription}>
+                    <h3 style={{...styles.itemName, color: '#0077b6'}}>{service.name}</h3>
+                    <p style={{...styles.itemDescription, color: '#0077b6'}}>
                       {service.description || 'No description provided.'}
                     </p>
                     
                     <div style={styles.itemDetails}>
                       <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Price:</span>
-                        <span style={styles.priceValue}>₱{service.price || 0}</span>
+                        <span style={{...styles.detailLabel, color: '#0077b6'}}>Price:</span>
+                        <span style={{...styles.priceValue, color: '#0077b6'}}>₱{service.price || 0}</span>
                       </div>
                       <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Duration:</span>
-                        <span style={styles.detailValue}>{service.duration || 60} min</span>
+                        <span style={{...styles.detailLabel, color: '#0077b6'}}>Duration:</span>
+                        <span style={{...styles.detailValue, color: '#0077b6'}}>{service.duration || 60} min</span>
                       </div>
                     </div>
                   </div>
@@ -1203,7 +1194,7 @@ const ProductManagement = () => {
                     <button
                       style={{
                         ...styles.actionButton,
-                        background: service.active ? '#ef4444' : '#10b981',
+                        background: service.active ? '#0077b6' : '#10b981',
                         flex: 1
                       }}
                       onClick={() => toggleServiceStatus(service)}
@@ -1211,14 +1202,14 @@ const ProductManagement = () => {
                       {service.active ? 'Deactivate' : 'Activate'}
                     </button>
                     <button
-                      style={{...styles.actionButton, background: '#3b82f6'}}
+                      style={{...styles.actionButton, background: '#0077b6'}}
                       onClick={() => handleServiceEdit(service)}
                       title="Edit service"
                     >
                       <FaEdit />
                     </button>
                     <button
-                      style={{...styles.actionButton, background: '#ef4444'}}
+                      style={{...styles.actionButton, background: '#0077b6'}}
                       onClick={() => handleDelete(service, 'service')}
                       title="Delete service"
                     >
@@ -1240,7 +1231,6 @@ const styles = {
     background: 'white',
     padding: '30px',
     borderRadius: '16px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
     minHeight: 'calc(100vh - 60px)',
   },
   header: {
@@ -1253,23 +1243,24 @@ const styles = {
   },
   title: {
     fontSize: '32px',
-    color: '#023e8a',
+    color: '#0077b6',
     margin: '0 0 8px 0',
     fontWeight: '700',
   },
   subtitle: {
     fontSize: '16px',
-    color: '#6b7280',
+    color: '#0077b6',
     margin: 0,
+    opacity: 0.8
   },
   headerActions: {
     display: 'flex',
     gap: '12px',
   },
   refreshButton: {
-    background: '#f3f4f6',
-    color: '#374151',
-    border: '1px solid #d1d5db',
+    background: '#0077b6',
+    color: 'white',
+    border: 'none',
     padding: '10px 20px',
     borderRadius: '8px',
     cursor: 'pointer',
@@ -1280,14 +1271,15 @@ const styles = {
     fontSize: '14px',
     transition: 'all 0.2s',
     ':hover': {
-      background: '#e5e7eb'
+      opacity: 0.9
     }
   },
   tabContainer: {
     display: 'flex',
-    background: '#f8fafc',
+    background: 'white',
     borderRadius: '12px',
-    padding: '8px',
+    border: '1px solid #0077b6',
+    padding: '4px',
     marginBottom: '24px',
   },
   tabButton: {
@@ -1324,7 +1316,7 @@ const styles = {
     fontSize: '15px',
     transition: 'all 0.2s',
     ':hover': {
-      background: '#005b8a'
+      opacity: 0.9
     }
   },
   loading: {
@@ -1347,7 +1339,6 @@ const styles = {
   sectionTitle: {
     fontSize: '16px',
     fontWeight: '600',
-    color: '#374151',
     marginBottom: '12px',
   },
   imagePreviewContainer: {
@@ -1357,7 +1348,7 @@ const styles = {
     margin: '0 auto 16px',
     borderRadius: '12px',
     overflow: 'hidden',
-    border: '2px dashed #d1d5db',
+    border: '2px solid #0077b6',
   },
   imagePreview: {
     width: '100%',
@@ -1368,7 +1359,7 @@ const styles = {
     position: 'absolute',
     top: '8px',
     right: '8px',
-    background: '#ef4444',
+    background: '#0077b6',
     color: 'white',
     border: 'none',
     borderRadius: '50%',
@@ -1381,7 +1372,7 @@ const styles = {
     fontSize: '14px',
     transition: 'all 0.2s',
     ':hover': {
-      background: '#dc2626'
+      opacity: 0.9
     }
   },
   progressContainer: {
@@ -1397,13 +1388,11 @@ const styles = {
   },
   progressFill: {
     height: '100%',
-    background: '#0077b6',
     borderRadius: '4px',
     transition: 'width 0.3s ease',
   },
   progressText: {
     fontSize: '12px',
-    color: '#6b7280',
     textAlign: 'center',
     display: 'block',
   },
@@ -1422,38 +1411,34 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     fontSize: '14px',
-    color: '#374151',
     fontWeight: '500',
     marginBottom: '8px',
     cursor: 'pointer',
   },
   uploadIcon: {
     fontSize: '16px',
-    color: '#0077b6',
   },
   fileInput: {
     display: 'none',
   },
   uploadHint: {
     fontSize: '12px',
-    color: '#6b7280',
     margin: '4px 0 0 0',
+    opacity: 0.8
   },
   orText: {
-    color: '#6b7280',
     fontSize: '14px',
     fontWeight: '500',
   },
   urlInput: {
     width: '100%',
     padding: '10px',
-    border: '1px solid #d1d5db',
     borderRadius: '8px',
     fontSize: '14px',
     transition: 'border 0.2s',
     ':focus': {
       outline: 'none',
-      borderColor: '#0077b6',
+      boxShadow: '0 0 0 3px rgba(0, 119, 182, 0.1)'
     }
   },
   // Modal Styles
@@ -1468,7 +1453,6 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
-    backdropFilter: 'blur(4px)',
   },
   formModal: {
     background: 'white',
@@ -1478,7 +1462,6 @@ const styles = {
     width: '90%',
     maxHeight: '90vh',
     overflowY: 'auto',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
   },
   formHeader: {
     display: 'flex',
@@ -1486,17 +1469,17 @@ const styles = {
     alignItems: 'center',
     marginBottom: '24px',
     paddingBottom: '16px',
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid #0077b6',
   },
   closeButton: {
     background: 'none',
     border: 'none',
     fontSize: '28px',
     cursor: 'pointer',
-    color: '#94a3b8',
-    transition: 'color 0.2s',
+    color: '#0077b6',
+    transition: 'all 0.2s',
     ':hover': {
-      color: '#374151'
+      opacity: 0.8
     }
   },
   form: {
@@ -1516,32 +1499,27 @@ const styles = {
   },
   label: {
     fontSize: '14px',
-    color: '#475569',
     fontWeight: '500',
   },
   input: {
     padding: '12px',
-    border: '1px solid #e2e8f0',
     borderRadius: '8px',
     fontSize: '14px',
-    transition: 'border 0.2s',
+    transition: 'all 0.2s',
     ':focus': {
       outline: 'none',
-      borderColor: '#0077b6',
       boxShadow: '0 0 0 3px rgba(0, 119, 182, 0.1)'
     }
   },
   textarea: {
     padding: '12px',
-    border: '1px solid #e2e8f0',
     borderRadius: '8px',
     fontSize: '14px',
     resize: 'vertical',
     minHeight: '80px',
-    transition: 'border 0.2s',
+    transition: 'all 0.2s',
     ':focus': {
       outline: 'none',
-      borderColor: '#0077b6',
       boxShadow: '0 0 0 3px rgba(0, 119, 182, 0.1)'
     }
   },
@@ -1549,7 +1527,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     fontSize: '14px',
-    color: '#475569',
     cursor: 'pointer',
   },
   formActions: {
@@ -1558,9 +1535,9 @@ const styles = {
     justifyContent: 'flex-end',
   },
   cancelButton: {
-    background: '#f1f5f9',
-    color: '#475569',
-    border: '1px solid #e2e8f0',
+    background: '#e5e7eb',
+    color: '#0077b6',
+    border: '1px solid #0077b6',
     padding: '12px 24px',
     borderRadius: '8px',
     cursor: 'pointer',
@@ -1568,7 +1545,7 @@ const styles = {
     fontWeight: '500',
     transition: 'all 0.2s',
     ':hover': {
-      background: '#e5e7eb'
+      opacity: 0.9
     }
   },
   submitButton: {
@@ -1582,14 +1559,13 @@ const styles = {
     fontWeight: '500',
     transition: 'all 0.2s',
     ':hover': {
-      background: '#005b8a'
+      opacity: 0.9
     }
   },
   confirmModal: {
     background: 'white',
     padding: '32px',
     borderRadius: '16px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
     maxWidth: '400px',
     width: '90%',
   },
@@ -1597,11 +1573,9 @@ const styles = {
     margin: '0 0 16px 0',
     fontSize: '20px',
     fontWeight: '600',
-    color: '#111827',
   },
   confirmMessage: {
     margin: '0 0 24px 0',
-    color: '#6b7280',
     lineHeight: '1.5',
   },
   modalActions: {
@@ -1610,7 +1584,7 @@ const styles = {
     justifyContent: 'flex-end',
   },
   deleteConfirmButton: {
-    background: '#ef4444',
+    background: '#0077b6',
     color: 'white',
     border: 'none',
     padding: '12px 24px',
@@ -1620,7 +1594,7 @@ const styles = {
     fontSize: '14px',
     transition: 'all 0.2s',
     ':hover': {
-      background: '#dc2626'
+      opacity: 0.9
     }
   },
   itemsList: {
@@ -1634,15 +1608,15 @@ const styles = {
   // Product Card with Image
   productCard: {
     background: 'white',
-    border: '1px solid #e5e7eb',
+    border: '2px solid #0077b6',
     borderRadius: '12px',
     overflow: 'hidden',
     transition: 'all 0.2s',
     display: 'flex',
     flexDirection: 'column',
     ':hover': {
-      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-      transform: 'translateY(-2px)'
+      transform: 'translateY(-2px)',
+      boxShadow: '0 10px 15px -3px rgba(0, 119, 182, 0.2)'
     }
   },
   productImageContainer: {
@@ -1666,7 +1640,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'rgba(0, 0, 0, 0.2)',
+    background: 'rgba(0, 119, 182, 0.2)',
     opacity: 0,
     transition: 'opacity 0.3s ease',
     display: 'flex',
@@ -1677,8 +1651,8 @@ const styles = {
     }
   },
   imageOverlayButton: {
-    background: 'rgba(255, 255, 255, 0.9)',
-    color: '#374151',
+    background: 'white',
+    color: '#0077b6',
     border: 'none',
     width: '36px',
     height: '36px',
@@ -1690,7 +1664,6 @@ const styles = {
     fontSize: '14px',
     transition: 'all 0.2s',
     ':hover': {
-      background: 'white',
       transform: 'scale(1.1)'
     }
   },
@@ -1723,7 +1696,6 @@ const styles = {
   },
   categoryText: {
     fontSize: '12px',
-    color: '#6b7280',
     fontWeight: '500',
   },
   productBadges: {
@@ -1743,13 +1715,11 @@ const styles = {
     margin: 0,
     fontSize: '16px',
     fontWeight: '600',
-    color: '#111827',
     lineHeight: '1.3',
   },
   productDescription: {
     margin: 0,
     fontSize: '13px',
-    color: '#6b7280',
     lineHeight: '1.5',
     display: '-webkit-box',
     WebkitLineClamp: 2,
@@ -1769,28 +1739,23 @@ const styles = {
   },
   detailLabel: {
     fontSize: '13px',
-    color: '#6b7280',
   },
   priceValue: {
     fontSize: '18px',
     fontWeight: '700',
-    color: '#0077b6',
   },
   detailValue: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#111827',
   },
   stockInput: {
     width: '60px',
     padding: '4px 8px',
-    border: '1px solid #d1d5db',
     borderRadius: '4px',
     fontSize: '14px',
     textAlign: 'center',
   },
   smallButton: {
-    background: '#0077b6',
     color: 'white',
     border: 'none',
     padding: '4px 8px',
@@ -1800,6 +1765,10 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
   },
   productActions: {
     display: 'flex',
@@ -1834,15 +1803,15 @@ const styles = {
   // Service Card
   itemCard: {
     background: 'white',
-    border: '1px solid #e5e7eb',
+    border: '2px solid #0077b6',
     borderRadius: '12px',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
     transition: 'all 0.2s',
     ':hover': {
-      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-      transform: 'translateY(-2px)'
+      transform: 'translateY(-2px)',
+      boxShadow: '0 10px 15px -3px rgba(0, 119, 182, 0.2)'
     }
   },
   itemHeader: {
@@ -1859,13 +1828,11 @@ const styles = {
     margin: '0 0 8px 0',
     fontSize: '16px',
     fontWeight: '600',
-    color: '#111827',
     lineHeight: '1.3',
   },
   itemDescription: {
     margin: '0 0 16px 0',
     fontSize: '13px',
-    color: '#6b7280',
     lineHeight: '1.5',
     display: '-webkit-box',
     WebkitLineClamp: 2,
@@ -1882,12 +1849,11 @@ const styles = {
     display: 'flex',
     gap: '8px',
     padding: '16px',
-    borderTop: '1px solid #e5e7eb',
+    borderTop: '1px solid #0077b6',
   },
   emptyState: {
     textAlign: 'center',
     padding: '60px 20px',
-    color: '#6b7280',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',

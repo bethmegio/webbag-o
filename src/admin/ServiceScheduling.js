@@ -663,11 +663,11 @@ const ServiceScheduling = () => {
   const tabs = [
     { key: 'calendar', icon: <FaCalendarAlt />, label: 'Calendar' },
     { key: 'bookings', icon: <FaClock />, label: 'All Bookings' },
-    { key: 'appointments', icon: <FaClock />, label: 'Appointments' },
+   
     { key: 'requests', icon: <FaUser />, label: 'Service Requests' },
-    { key: 'staff', icon: <FaUser />, label: 'Staff' },
-    { key: 'history', icon: <FaHistory />, label: 'Service History' },
-    { key: 'settings', icon: <FaCog />, label: 'Schedule Settings' },
+   
+   
+  
   ];
 
   return (
@@ -701,11 +701,9 @@ const ServiceScheduling = () => {
       <div style={styles.content}>
         {activeTab === 'calendar' && <CalendarScreen currentUser={currentUser} />}
         {activeTab === 'bookings' && <AllBookings currentUser={currentUser} />}
-        {activeTab === 'appointments' && <div style={styles.placeholder}>Appointments Screen - Coming Soon</div>}
+       
         {activeTab === 'requests' && <ServiceRequests currentUser={currentUser} />}
-        {activeTab === 'staff' && <div style={styles.placeholder}>Staff Screen - Coming Soon</div>}
-        {activeTab === 'history' && <div style={styles.placeholder}>Service History Screen - Coming Soon</div>}
-        {activeTab === 'settings' && <div style={styles.placeholder}>Schedule Settings Screen - Coming Soon</div>}
+      
       </div>
     </div>
   );

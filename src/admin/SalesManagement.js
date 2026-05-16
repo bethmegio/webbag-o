@@ -1,8 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { 
+  // Add these icons for the chatbox:
+  FaTimes,           // For close button (×)
+  FaPhoneAlt,        // For phone/call button
+  FaEnvelopeOpen,    // For email button
+  FaComments,        // For chat/message icon
+  FaPaperPlane,
   FaCalendarCheck, 
-  FaShoppingBag, 
+  FaShoppingBag,
+  FaQuestionCircle, 
   FaFileInvoice, 
   FaUsers, 
   FaChartBar,
@@ -35,16 +42,91 @@ import {
   FaPhone,
   FaEnvelope,
   FaUser,
-  FaBox
+  FaBox,
+  FaStar,
+  FaThumbsUp,
+  FaThumbsDown,
+  FaStarHalfAlt,
+  FaRegStar,
+  FaComment,
+  FaExclamationCircle,
+  FaCalendarAlt,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
+  FaReceipt,
+  FaCreditCard,
+  FaTruck,
+  FaMapMarkerAlt,
+  FaListAlt,
+  FaSwimmingPool,
+  FaWrench,
+  FaPaintRoller,
+  FaTint,
+  FaLeaf,
+  FaCalendarDay,
+  FaCalendar,
+  FaList,
+  FaCalendarWeek,
+  // ADD THESE MISSING IMPORTS (but make sure they're not duplicates):
+  FaUserPlus,
+  FaCheck,
+  FaChevronDown,
+  FaFileCsv,
+  FaBan,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 
 // ====================
 // REUSABLE COMPONENTS
 // ====================
 
+// Star Rating Component
+const StarRating = ({ rating, size = 16 }) => {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+      {[...Array(5)].map((_, index) => {
+        const starValue = index + 1;
+        return (
+          <FaStar
+            key={index}
+            size={size}
+            color={starValue <= rating ? '#F59E0B' : '#E5E7EB'}
+            style={{ transition: 'color 0.2s ease' }}
+          />
+        );
+      })}
+      <span style={{ 
+        marginLeft: '8px', 
+        fontSize: size * 0.75, 
+        fontWeight: '600',
+        color: '#111827' 
+      }}>
+        {rating.toFixed(1)}
+      </span>
+    </div>
+  );
+};
+
+// Helper function for status colors
+const getStatusColor = (status, type = 'order') => {
+  const colors = {
+    pending: { background: '#fffbeb', color: '#f59e0b', border: '#fcd34d' },
+    confirmed: { background: '#e0f2fe', color: '#0284c7', border: '#7dd3fc' },
+    in_progress: { background: '#f0f9ff', color: '#0ea5e9', border: '#bae6fd' },
+    completed: { background: '#f0fdf4', color: '#16a34a', border: '#86efac' },
+    cancelled: { background: '#fef2f2', color: '#dc2626', border: '#fca5a5' },
+    shipped: { background: '#f5f3ff', color: '#8b5cf6', border: '#c4b5fd' },
+    delivered: { background: '#f0fdf4', color: '#10b981', border: '#a7f3d0' },
+    approved: { background: '#f0fdf4', color: '#16a34a', border: '#86efac' },
+    rejected: { background: '#fef2f2', color: '#dc2626', border: '#fca5a5' }
+  };
+  return colors[status] || { background: '#f3f4f6', color: '#6b7280', border: '#d1d5db' };
+};
+
 // Status badge component
-const StatusBadge = ({ status }) => {
-  const color = getStatusColor(status);
+const StatusBadge = ({ status, type = 'order' }) => {
+  const color = getStatusColor(status, type);
   return (
     <span style={{
       padding: '6px 12px',
@@ -59,67 +141,70 @@ const StatusBadge = ({ status }) => {
       alignItems: 'center',
       gap: '4px'
     }}>
-      {status === 'in_progress' && <FaClock size={10} />}
+      {status === 'pending' && <FaClock size={10} />}
+      {status === 'confirmed' && <FaCheckCircle size={10} />}
       {status === 'completed' && <FaCheckCircle size={10} />}
       {status === 'cancelled' && <FaTimesCircle size={10} />}
+      {status === 'in_progress' && <FaClock size={10} />}
+      {status === 'shipped' && <FaTruck size={10} />}
+      {status === 'delivered' && <FaCheckCircle size={10} />}
       {status.replace('_', ' ')}
     </span>
   );
 };
 
-// Customer source badge component
-const CustomerSourceBadge = ({ order }) => {
-  if (!order.user_id) {
-    return (
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        background: '#fff7ed',
-        color: '#ea580c',
-        padding: '2px 8px',
-        borderRadius: '12px',
-        fontSize: '12px',
-        fontWeight: '500',
-        marginLeft: '8px'
-      }}>
-        <FaStore size={10} />
-        Walk-in
-      </span>
-    );
-  }
+// Review Status Badge
+const ReviewStatusBadge = ({ status }) => {
+  const colors = {
+    pending: { background: '#fffbeb', color: '#f59e0b', border: '#fcd34d' },
+    approved: { background: '#f0fdf4', color: '#16a34a', border: '#86efac' },
+    rejected: { background: '#fef2f2', color: '#dc2626', border: '#fca5a5' }
+  };
+  
+  const color = colors[status] || { background: '#f3f4f6', color: '#6b7280', border: '#d1d5db' };
   
   return (
     <span style={{
+      padding: '4px 10px',
+      borderRadius: '20px',
+      fontSize: '12px',
+      fontWeight: '600',
+      textTransform: 'capitalize',
+      backgroundColor: color.background,
+      color: color.color,
+      border: `1px solid ${color.border}`,
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '4px',
-      background: '#e0f2fe',
-      color: '#0369a1',
-      padding: '2px 8px',
-      borderRadius: '12px',
-      fontSize: '12px',
-      fontWeight: '500',
-      marginLeft: '8px'
+      gap: '4px'
     }}>
-      <FaMobileAlt size={10} />
-      {order.profile_full_name ? 'Registered' : 'App User'}
+      {status === 'approved' && <FaThumbsUp size={10} />}
+      {status === 'rejected' && <FaThumbsDown size={10} />}
+      {status === 'pending' && <FaClock size={10} />}
+      {status}
     </span>
   );
 };
 
 // Stat card component
-const StatCard = ({ icon: Icon, title, value, color, bgColor }) => (
-  <div style={{
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    padding: '20px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-  }}>
+const StatCard = ({ icon: Icon, title, value, color, bgColor, subtitle, onClick }) => (
+  <div 
+    style={{
+      backgroundColor: 'white',
+      borderRadius: '12px',
+      padding: '20px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '16px',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+      cursor: onClick ? 'pointer' : 'default',
+      ':hover': onClick ? {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+      } : {}
+    }}
+    onClick={onClick}
+  >
     <div style={{
       backgroundColor: bgColor,
       padding: '12px',
@@ -130,7 +215,7 @@ const StatCard = ({ icon: Icon, title, value, color, bgColor }) => (
     }}>
       <Icon size={24} color={color} />
     </div>
-    <div>
+    <div style={{ flex: 1 }}>
       <div style={{
         fontSize: '14px',
         color: '#6b7280',
@@ -141,279 +226,2050 @@ const StatCard = ({ icon: Icon, title, value, color, bgColor }) => (
       <div style={{
         fontSize: '24px',
         fontWeight: '700',
-        color: '#111827'
+        color: '#111827',
+        marginBottom: subtitle ? '4px' : '0'
       }}>
         {value}
       </div>
+      {subtitle && (
+        <div style={{
+          fontSize: '12px',
+          color: '#6b7280'
+        }}>
+          {subtitle}
+        </div>
+      )}
     </div>
   </div>
 );
 
-// OrderRow with product details component
-const OrderRowWithProducts = ({ order, onView, onUpdateStatus, onDelete }) => {
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return {
-      date: date.toLocaleDateString(),
-      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+// ====================
+// ORDER MANAGEMENT COMPONENT
+// ====================
+
+const OrdersManagementTab = () => {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [filter]);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      
+      let query = supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            id,
+            product_id,
+            quantity,
+            price,
+            products (
+              id,
+              name,
+              price,
+              image_url
+            )
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (filter !== 'all') {
+        query = query.eq('status', filter);
+      }
+
+      if (search) {
+        query = query.or(`
+          customer_name.ilike.%${search}%,
+          customer_email.ilike.%${search}%,
+          customer_phone.ilike.%${search}%
+        `);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching orders:', error);
+        // Try without joins
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (simpleError) throw simpleError;
+        setOrders(simpleData || []);
+      } else {
+        setOrders(data || []);
+      }
+
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      alert('Error loading orders: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const { date, time } = formatDate(order.created_at);
+  const updateOrderStatus = async (orderId, status) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
 
-  // Function to render product details
-  const renderProducts = () => {
-    if (!order.products || order.products.length === 0) {
-      return <div style={{ fontSize: '12px', color: '#6b7280' }}>No products</div>;
+      if (error) throw error;
+      
+      setOrders(prev => prev.map(order => 
+        order.id === orderId ? { ...order, status } : order
+      ));
+      
+      alert(`Order ${status} successfully!`);
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      alert('Error updating order status: ' + error.message);
     }
+  };
+
+  const deleteOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) throw error;
+      
+      setOrders(prev => prev.filter(order => order.id !== orderId));
+      alert('Order deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert('Error deleting order: ' + error.message);
+    }
+  };
+
+  const getOrderStats = () => {
+    const total = orders.length;
+    const pending = orders.filter(o => o.status === 'pending').length;
+    const confirmed = orders.filter(o => o.status === 'confirmed').length;
+    const completed = orders.filter(o => o.status === 'completed').length;
+    const cancelled = orders.filter(o => o.status === 'cancelled').length;
+    const totalRevenue = orders
+      .filter(o => o.status === 'completed' || o.status === 'confirmed')
+      .reduce((sum, o) => sum + (o.total || o.total_amount || 0), 0);
+    
+    return { total, pending, confirmed, completed, cancelled, totalRevenue };
+  };
+
+  const stats = getOrderStats();
+
+  const renderOrderDetails = (order) => {
+    const orderTotal = order.total || order.total_amount || 0;
+    const subtotal = order.subtotal || 0;
+    const tax = order.tax || 0;
+    const discount = order.discount || 0;
 
     return (
-      <div style={{ marginTop: '4px' }}>
-        {order.products.slice(0, 2).map((product, index) => (
-          <div key={index} style={{
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '30px',
+          maxWidth: '800px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}>
+          <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            fontSize: '11px',
-            padding: '2px 0'
+            marginBottom: '24px'
           }}>
-            <span style={{ 
-              fontWeight: '500', 
-              color: '#374151',
-              maxWidth: '120px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
-              {product.name || `Product #${product.product_id}`}
-            </span>
-            <span style={{ 
-              fontWeight: '600', 
-              color: '#059669',
-              marginLeft: '8px'
-            }}>
-              ×{product.quantity || 1}
-            </span>
+            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
+              Order Details
+            </h3>
+            <button
+              onClick={() => setShowDetails(false)}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
           </div>
-        ))}
-        {order.products.length > 2 && (
+
+          {/* Order Header */}
           <div style={{
-            fontSize: '10px',
-            color: '#6b7280',
-            fontStyle: 'italic',
-            marginTop: '2px'
+            backgroundColor: '#f9fafb',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '20px'
           }}>
-            +{order.products.length - 2} more items
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px'
+            }}>
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Order Number
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>
+                  #{order.id}
+                </div>
+              </div>
+              <StatusBadge status={order.status} />
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Customer
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {order.customer_name || 'Customer'}
+                </div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                  {order.customer_email || ''}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Date & Time
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString()}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Payment Method
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {order.payment_method || 'Cash'}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Payment Status
+                </div>
+                <div style={{ 
+                  fontSize: '16px', 
+                  fontWeight: '500', 
+                  color: order.payment_status === 'paid' ? '#10b981' : '#ef4444'
+                }}>
+                  {order.payment_status || 'Pending'}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Channel
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {order.channel || 'Online'}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Total Amount
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+                  ₱{orderTotal.toLocaleString()}
+                </div>
+              </div>
+            </div>
           </div>
-        )}
+
+          {/* Order Summary */}
+          <div style={{ marginBottom: '24px' }}>
+            <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+              Order Summary
+            </h4>
+            <div style={{
+              backgroundColor: '#f9fafb',
+              padding: '20px',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                paddingBottom: '12px',
+                borderBottom: '1px solid #e5e7eb'
+              }}>
+                <span style={{ color: '#6b7280' }}>Subtotal</span>
+                <span style={{ fontWeight: '600' }}>₱{subtotal.toLocaleString()}</span>
+              </div>
+              
+              {tax > 0 && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  padding: '12px 0',
+                  borderBottom: '1px solid #e5e7eb'
+                }}>
+                  <span style={{ color: '#6b7280' }}>Tax</span>
+                  <span style={{ fontWeight: '600' }}>₱{tax.toLocaleString()}</span>
+                </div>
+              )}
+              
+              {discount > 0 && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  padding: '12px 0',
+                  borderBottom: '1px solid #e5e7eb'
+                }}>
+                  <span style={{ color: '#6b7280' }}>Discount</span>
+                  <span style={{ fontWeight: '600', color: '#10b981' }}>-₱{discount.toLocaleString()}</span>
+                </div>
+              )}
+              
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                paddingTop: '12px',
+                fontWeight: '700',
+                fontSize: '18px'
+              }}>
+                <span>Total</span>
+                <span>₱{orderTotal.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Order Items */}
+          <div style={{ marginBottom: '24px' }}>
+            <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+              Order Items
+            </h4>
+            {order.order_items && order.order_items.length > 0 ? (
+              <div style={{
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                overflow: 'hidden'
+              }}>
+                {order.order_items.map((item, index) => (
+                  <div key={item.id} style={{
+                    padding: '16px',
+                    borderBottom: index < order.order_items.length - 1 ? '1px solid #e5e7eb' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px'
+                  }}>
+                    <div style={{
+                      width: '60px',
+                      height: '60px',
+                      backgroundColor: '#f3f4f6',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <FaBox size={24} color="#6b7280" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                        {item.products?.name || `Product #${item.product_id}`}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                        Quantity: {item.quantity || 1} × ₱{(item.price || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+                      ₱{((item.quantity || 1) * (item.price || 0)).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                padding: '32px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <FaBox size={48} color="#d1d5db" />
+                <p style={{ color: '#6b7280', marginTop: '16px' }}>
+                  No items found for this order
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            {order.status === 'pending' && (
+              <>
+                <button
+                  onClick={() => {
+                    updateOrderStatus(order.id, 'confirmed');
+                    setShowDetails(false);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <FaCheckCircle />
+                  Accept Order
+                </button>
+                
+                <button
+                  onClick={() => {
+                    updateOrderStatus(order.id, 'cancelled');
+                    setShowDetails(false);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#fef2f2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <FaTimesCircle />
+                  Decline Order
+                </button>
+              </>
+            )}
+            
+            {order.status === 'confirmed' && (
+              <button
+                onClick={() => {
+                  updateOrderStatus(order.id, 'completed');
+                  setShowDetails(false);
+                }}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <FaCheckCircle />
+                Mark as Completed
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
 
   return (
-    <tr style={{
-      borderBottom: '1px solid #e5e7eb',
-      transition: 'background-color 0.2s ease'
-    }}>
-      <td style={{ padding: '16px', fontSize: '14px' }}>
-        <div style={{ fontWeight: '600', color: '#111827' }}>#{order.id}</div>
-        <div style={{
-          fontSize: '12px',
-          color: '#6b7280',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          marginTop: '4px'
-        }}>
-          {order.channel === 'mobile' ? (
-            <>
-              <FaMobileAlt size={10} /> Mobile
-            </>
-          ) : (
-            <>
-              <FaStore size={10} /> Walk-in
-            </>
-          )}
-        </div>
-      </td>
-      
-      <td style={{ padding: '16px' }}>
+    <div>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px'
+      }}>
         <div>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            marginBottom: '4px' 
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#111827',
+            margin: '0 0 4px 0'
           }}>
-            <div style={{ 
-              fontWeight: '600', 
-              color: '#111827',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <FaUser size={12} color="#6b7280" />
-              {order.customer_name}
-              <CustomerSourceBadge order={order} />
-            </div>
-          </div>
-          <div style={{ 
-            fontSize: '13px', 
+            Orders Management
+          </h2>
+          <p style={{
+            fontSize: '14px',
             color: '#6b7280',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '2px'
+            margin: 0
           }}>
-            <FaEnvelope size={12} />
-            {order.customer_email}
-          </div>
-          <div style={{ 
-            fontSize: '13px', 
-            color: '#6b7280',
+            Manage and process customer orders
+          </p>
+        </div>
+        
+        <button
+          onClick={fetchOrders}
+          style={{
+            padding: '10px 16px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
-          }}>
-            <FaPhone size={12} />
-            {order.customer_phone}
-          </div>
-        </div>
-      </td>
-      
-      <td style={{ padding: '16px' }}>
-        <div>
+          }}
+        >
+          <FaSync />
+          Refresh
+        </button>
+      </div>
+
+      {/* Order Stats */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        <StatCard
+          icon={FaShoppingBag}
+          title="Total Orders"
+          value={stats.total}
+          color="#3b82f6"
+          bgColor="#eff6ff"
+        />
+        <StatCard
+          icon={FaClock}
+          title="Pending"
+          value={stats.pending}
+          color="#F59E0B"
+          bgColor="#fffbeb"
+        />
+        <StatCard
+          icon={FaCheckCircle}
+          title="Confirmed"
+          value={stats.confirmed}
+          color="#10B981"
+          bgColor="#d1fae5"
+        />
+        <StatCard
+          icon={FaDollarSign}
+          title="Total Revenue"
+          value={`₱${stats.totalRevenue.toLocaleString()}`}
+          color="#8B5CF6"
+          bgColor="#f5f3ff"
+        />
+      </div>
+
+
+      {/* Orders List */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+      }}>
+        {loading ? (
           <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px',
-            marginBottom: '4px'
+            padding: '48px 16px', 
+            textAlign: 'center' 
           }}>
-            <FaBox size={12} color="#6b7280" />
-            <span style={{ fontWeight: '500', fontSize: '13px' }}>
-              {order.total_items || 0} items
-            </span>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid #e5e7eb',
+              borderTop: '4px solid #3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px auto'
+            }} />
+            <p style={{ color: '#6b7280' }}>Loading orders...</p>
           </div>
-          {renderProducts()}
-        </div>
-      </td>
-      
-      <td style={{ padding: '16px' }}>
-        <div style={{ fontWeight: '700', fontSize: '16px', color: '#111827' }}>
-          ₱{order.total.toLocaleString()}
-        </div>
-        <div style={{
-          fontSize: '12px',
-          color: '#6b7280',
-          textTransform: 'capitalize',
-          marginTop: '4px'
-        }}>
-          {order.payment_method}
-        </div>
-      </td>
-      
-      <td style={{ padding: '16px' }}>
-        <div style={{ fontWeight: '500', color: '#111827' }}>{date}</div>
-        <div style={{ fontSize: '13px', color: '#6b7280' }}>{time}</div>
-      </td>
-      
-      <td style={{ padding: '16px' }}>
-        <StatusBadge status={order.status} />
-      </td>
-      
-      <td style={{ padding: '16px' }}>
-        <div style={{ 
-          display: 'flex', 
-          gap: '8px',
-          justifyContent: 'flex-end' 
-        }}>
-          <button
-            onClick={() => onView(order)}
-            style={{
-              padding: '8px',
-              borderRadius: '6px',
-              border: '1px solid #d1d5db',
-              backgroundColor: 'white',
-              color: '#6b7280',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease'
-            }}
-            title="View Details"
-          >
-            <FaEye size={14} />
-          </button>
-          
-          {order.status === 'pending' && (
-            <button
-              onClick={() => onUpdateStatus(order.id, 'confirmed')}
-              style={{
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #d1fae5',
-                backgroundColor: '#ecfdf5',
-                color: '#059669',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease'
-              }}
-              title="Confirm Order"
-            >
-              <FaCheckCircle size={14} />
-            </button>
-          )}
-          
-          {(order.status === 'pending' || order.status === 'confirmed') && (
-            <button
-              onClick={() => onUpdateStatus(order.id, 'cancelled')}
-              style={{
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #fee2e2',
-                backgroundColor: '#fef2f2',
-                color: '#dc2626',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease'
-              }}
-              title="Cancel Order"
-            >
-              <FaTimesCircle size={14} />
-            </button>
-          )}
-          
-          <button
-            onClick={() => onDelete(order.id)}
-            style={{
-              padding: '8px',
-              borderRadius: '6px',
-              border: '1px solid #fee2e2',
-              backgroundColor: '#fef2f2',
-              color: '#dc2626',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease'
-            }}
-            title="Delete Order"
-          >
-            <FaTrash size={14} />
-          </button>
-        </div>
-      </td>
-    </tr>
+        ) : orders.length === 0 ? (
+          <div style={{ 
+            padding: '48px 16px', 
+            textAlign: 'center' 
+          }}>
+            <FaShoppingBag size={48} color="#d1d5db" />
+            <h3 style={{ 
+              margin: '16px 0 8px 0', 
+              color: '#111827', 
+              fontSize: '18px' 
+            }}>
+              No Orders Found
+            </h3>
+            <p style={{ 
+              color: '#6b7280', 
+              fontSize: '14px',
+              margin: 0 
+            }}>
+              {search ? 'No orders match your search criteria' : 'No orders available yet'}
+            </p>
+          </div>
+        ) : (
+          orders.map((order) => {
+            const orderTotal = order.total || order.total_amount || 0;
+            
+            return (
+              <div key={order.id} style={{
+                padding: '20px',
+                borderBottom: '1px solid #e5e7eb',
+                transition: 'background-color 0.2s ease',
+                ':hover': {
+                  backgroundColor: '#f9fafb'
+                }
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '20px'
+                }}>
+                  {/* Order Content */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <FaReceipt size={16} color="#6b7280" />
+                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                          Order #{order.id}
+                        </span>
+                      </div>
+                      <StatusBadge status={order.status} />
+                      <span style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        marginLeft: 'auto'
+                      }}>
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    
+                    {/* Customer Info */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <FaUser size={14} color="#6b7280" />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>
+                          {order.customer_name || 'Customer'}
+                        </span>
+                      </div>
+                      {order.customer_email ? (
+                        <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                          ({order.customer_email})
+                        </span>
+                      ) : null}
+                      {order.customer_phone && (
+                        <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                          📱 {order.customer_phone}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Order Summary */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                      gap: '16px',
+                      marginBottom: '12px'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                          Items
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                          {order.order_items?.length || 'N/A'} items
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                          Total Amount
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '700', color: '#111827' }}>
+                          ₱{orderTotal.toLocaleString()}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                          Payment
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <FaCreditCard size={12} />
+                          {order.payment_method || 'Cash'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: order.payment_status === 'paid' ? '#10b981' : '#ef4444' }}>
+                          {order.payment_status || 'Pending'}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                          Channel
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {order.channel === 'online' ? <FaMobileAlt size={12} /> : <FaStore size={12} />}
+                          {order.channel || 'Online'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    minWidth: '140px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowDetails(true);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#f3f4f6',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <FaEye size={12} />
+                      View Details
+                    </button>
+                    
+                    {order.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => updateOrderStatus(order.id, 'confirmed')}
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <FaCheckCircle size={12} />
+                          Accept
+                        </button>
+                        
+                        <button
+                          onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#fef2f2',
+                            color: '#dc2626',
+                            border: '1px solid #fecaca',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <FaTimesCircle size={12} />
+                          Decline
+                        </button>
+                      </>
+                    )}
+                    
+                    {order.status === 'confirmed' && (
+                      <button
+                        onClick={() => updateOrderStatus(order.id, 'completed')}
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <FaCheckCircle size={12} />
+                        Complete
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => deleteOrder(order.id)}
+                      style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <FaTrash size={12} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Order Details Modal */}
+      {showDetails && selectedOrder && renderOrderDetails(selectedOrder)}
+    </div>
   );
 };
 
-// Order Details Modal Component
-const OrderDetailsModal = ({ order, onClose }) => {
-  if (!order) return null;
+// ====================
+// BOOKINGS MANAGEMENT TAB
+// ====================
+
+
+const BookingsManagementTab = () => {
+  // State variables
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [technicianFilter, setTechnicianFilter] = useState('all');
+  const [calendarView, setCalendarView] = useState('list');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [availableTechnicians, setAvailableTechnicians] = useState([]);
+  const [fullyBookedDates, setFullyBookedDates] = useState([]);
+  const [services, setServices] = useState([]);
+  const [selectedBookings, setSelectedBookings] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isExporting, setIsExporting] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
+  // Chatbox state
+  const [showChatbox, setShowChatbox] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  
+  // Cancel modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [selectedReason, setSelectedReason] = useState('');
+
+  const cancellationReasons = [
+    { id: 'customer_requested', label: 'Customer Requested', description: 'Customer requested to cancel the booking' },
+    { id: 'schedule_conflict', label: 'Schedule Conflict', description: 'Conflicting schedule with other bookings' },
+    { id: 'technician_unavailable', label: 'Technician Unavailable', description: 'No available technician for the date/time' },
+    { id: 'weather_conditions', label: 'Weather Conditions', description: 'Unfavorable weather conditions' },
+    { id: 'customer_no_show', label: 'Customer No-Show', description: 'Customer was not available at scheduled time' },
+    { id: 'service_not_possible', label: 'Service Not Possible', description: 'Service cannot be performed as requested' },
+    { id: 'equipment_failure', label: 'Equipment Failure', description: 'Required equipment is not functioning' },
+    { id: 'location_inaccessible', label: 'Location Inaccessible', description: 'Cannot access the service location' },
+    { id: 'customer_non_responsive', label: 'Customer Non-Responsive', description: 'Customer is not responding to communication' },
+    { id: 'other', label: 'Other', description: 'Other reason (specify below)' }
+  ];
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+    
+    // Real-time updates subscription
+    const channel = supabase
+      .channel('bookings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('Booking change detected:', payload);
+          fetchBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Fetch when filters change
+  useEffect(() => {
+    fetchBookings();
+  }, [filter, categoryFilter, technicianFilter, paymentFilter, sortBy, sortOrder, dateRange]);
+
+  // Debounced search effect
+  useEffect(() => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    const timeout = setTimeout(() => {
+      fetchBookings();
+    }, 500);
+    
+    setSearchTimeout(timeout);
+    
+    return () => {
+      if (searchTimeout) clearTimeout(searchTimeout);
+    };
+  }, [search]);
+
+  // Fetch all data
+  const fetchAllData = useCallback(async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchBookings(),
+        fetchServices(),
+        fetchTechnicians(),
+        calculateFullyBookedDates()
+      ]);
+    } catch (error) {
+      console.error('Error fetching all data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch services from database
+  const fetchServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching services:', error);
+        throw error;
+      }
+      
+      setServices(data || []);
+      console.log('Services fetched:', data?.length || 0);
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      alert('Error loading services: ' + error.message);
+    }
+  };
+
+  // Fetch technicians from database
+  const fetchTechnicians = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('technicians')
+        .select('*')
+        .eq('status', 'active');
+      
+      if (error) {
+        console.error('Error fetching technicians:', error);
+        throw error;
+      }
+      
+      setAvailableTechnicians(data || []);
+      console.log('Technicians fetched:', data?.length || 0);
+    } catch (error) {
+      console.error('Error fetching technicians:', error);
+      alert('Error loading technicians: ' + error.message);
+    }
+  };
+
+// Fetch bookings with new schema
+const fetchBookings = async () => {
+  try {
+    setLoading(true);
+    
+    let query = supabase
+      .from('bookings')
+      .select(`
+        *,
+        services:service_id (
+          name,
+          category,
+          price,
+          service_type
+        ),
+        technicians:technician_id (
+          name,
+          email,
+          phone,
+          specialization
+        )
+      `)
+      .order(sortBy, { ascending: sortOrder === 'asc' });
+
+    // Apply filters
+    if (filter !== 'all') {
+      query = query.eq('status', filter);
+    }
+    
+    if (paymentFilter !== 'all') {
+      query = query.eq('payment_status', paymentFilter);
+    }
+    
+    if (dateRange.start && dateRange.end) {
+      query = query.gte('booking_date', dateRange.start).lte('booking_date', dateRange.end);
+    }
+
+    if (search) {
+      query = query.or(`
+        customer_name.ilike.%${search}%,
+        customer_email.ilike.%${search}%,
+        customer_phone.ilike.%${search}%,
+        address.ilike.%${search}%,
+        services.name.ilike.%${search}%
+      `);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching bookings:', error);
+      // Try without joins
+      const { data: simpleData } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('created_at', { ascending: false });
+      setBookings(simpleData || []);
+    } else {
+      setBookings(data || []);
+    }
+
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
+    alert('Error loading bookings: ' + error.message);
+    setBookings([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Update references in the component to use new field names:
+// Instead of booking.name -> booking.customer_name
+// Instead of booking.email -> booking.customer_email
+// Instead of booking.contact -> booking.customer_phone
+// Instead of booking.date -> booking.booking_date
+// Instead of booking.location -> booking.address
+
+  // Calculate fully booked dates
+  const calculateFullyBookedDates = async () => {
+    try {
+      // First, get all services with their capacities
+      const { data: servicesData, error: servicesError } = await supabase
+        .from('services')
+        .select('id, max_daily_capacity');
+      
+      if (servicesError) throw servicesError;
+
+      const serviceCapacities = {};
+      servicesData?.forEach(s => {
+        serviceCapacities[s.id] = s.max_daily_capacity || 5; // Default to 5 if not set
+      });
+
+      // Get bookings for the next 90 days
+      const startDate = new Date().toISOString().split('T')[0];
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 90);
+      const endDateStr = endDate.toISOString().split('T')[0];
+      
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('id, service_id, date, status')
+        .gte('date', startDate)
+        .lte('date', endDateStr)
+        .neq('status', 'cancelled')
+        .neq('status', 'deleted');
+      
+      if (bookingsError) throw bookingsError;
+      
+      // Count bookings per service per date
+      const capacityMap = {};
+      bookingsData?.forEach(booking => {
+        if (!capacityMap[booking.date]) {
+          capacityMap[booking.date] = {};
+        }
+        if (!capacityMap[booking.date][booking.service_id]) {
+          capacityMap[booking.date][booking.service_id] = 0;
+        }
+        capacityMap[booking.date][booking.service_id]++;
+      });
+      
+      // Find fully booked dates
+      const fullyBooked = [];
+      Object.keys(capacityMap).forEach(date => {
+        Object.keys(capacityMap[date]).forEach(serviceId => {
+          const capacity = serviceCapacities[serviceId] || 5;
+          if (capacityMap[date][serviceId] >= capacity) {
+            if (!fullyBooked.includes(date)) {
+              fullyBooked.push(date);
+            }
+          }
+        });
+      });
+      
+      setFullyBookedDates(fullyBooked);
+      console.log('Fully booked dates calculated:', fullyBooked.length);
+      
+    } catch (error) {
+      console.error('Error calculating fully booked dates:', error);
+    }
+  };
+
+  // Fetch chat messages
+  const fetchChatMessages = async (bookingId) => {
+    try {
+      setChatLoading(true);
+      const { data, error } = await supabase
+        .from('booking_messages')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setChatMessages(data || []);
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
+      setChatMessages([]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Send a new message
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedBooking) return;
+
+    try {
+      setIsSendingMessage(true);
+      
+      const messageData = {
+        booking_id: selectedBooking.id,
+        sender_type: 'admin',
+        sender_id: 'admin',
+        message: newMessage.trim(),
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
+
+      const { data, error } = await supabase
+        .from('booking_messages')
+        .insert([messageData])
+        .select();
+
+      if (error) throw error;
+
+      setChatMessages(prev => [...prev, ...(data || [])]);
+      setNewMessage('');
+
+      await sendMessageNotification(selectedBooking, newMessage.trim());
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Failed to send message: ' + error.message);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  // Send email notification
+  const sendMessageNotification = async (booking, message) => {
+    try {
+      const { error } = await supabase
+        .from('email_notifications')
+        .insert([{
+          to_email: booking.email,
+          subject: `New Message Regarding Your Booking #${booking.id}`,
+          body: `
+            <h3>New Message from Pool Service Admin</h3>
+            <p><strong>Regarding:</strong> ${booking.service || booking.services?.name || 'Your Service'}</p>
+            <p><strong>Date:</strong> ${formatDate(booking.date)}</p>
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <strong>Message:</strong><br/>
+              ${message}
+            </div>
+            <p>Please log in to your account to view and reply to this message.</p>
+            <p>Thank you,<br/>Pool Service Team</p>
+          `,
+          booking_id: booking.id,
+          notification_type: 'booking_message'
+        }]);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error sending notification:', error);
+    }
+  };
+
+  // Open chatbox
+  const openChatbox = async (booking) => {
+    setSelectedBooking(booking);
+    await fetchChatMessages(booking.id);
+    setShowChatbox(true);
+  };
+
+  // Close chatbox
+  const closeChatbox = () => {
+    setShowChatbox(false);
+    setChatMessages([]);
+    setNewMessage('');
+  };
+
+  // Helper functions
+  const getBookingStatusColor = (status) => {
+    const colors = {
+      'requested': { bg: '#dbeafe', text: '#1d4ed8', label: 'Requested' },
+      'awaiting_store_visit': { bg: '#fef3c7', text: '#92400e', label: 'Awaiting Store Visit' },
+      'scheduled': { bg: '#d1fae5', text: '#065f46', label: 'Scheduled' },
+      'in_progress': { bg: '#e0f2fe', text: '#0284c7', label: 'In Progress' },
+      'completed': { bg: '#dcfce7', text: '#166534', label: 'Completed' },
+      'cancelled': { bg: '#fee2e2', text: '#dc2626', label: 'Cancelled' },
+      'deleted': { bg: '#f3f4f6', text: '#6b7280', label: 'Deleted' }
+    };
+    return colors[status] || { bg: '#f3f4f6', text: '#6b7280', label: status };
+  };
+
+  const getServiceIcon = (category) => {
+    switch(category?.toLowerCase()) {
+      case 'pool care': return <FaTools />;
+      case 'pool repair': return <FaWrench />;
+      case 'pool design': return <FaPaintRoller />;
+      case 'water treatment': return <FaTint />;
+      case 'landscaping': return <FaLeaf />;
+      default: return <FaTools />;
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount) return '₱0';
+    return `₱${parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-PH', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return 'Invalid date';
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Invalid date';
+    }
+  };
+
+  // Update booking status
+  const updateBookingStatus = async (bookingId, newStatus, reason = '') => {
+    try {
+      const updates = { 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      if (newStatus === 'cancelled' && reason) {
+        updates.cancellation_reason = reason;
+      }
+
+      const { error } = await supabase
+        .from('bookings')
+        .update(updates)
+        .eq('id', bookingId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setBookings(prev => prev.map(booking => 
+        booking.id === bookingId ? { ...booking, ...updates } : booking
+      ));
+      
+      if (selectedBooking?.id === bookingId) {
+        setSelectedBooking(prev => ({ ...prev, ...updates }));
+      }
+      
+      alert(`Booking status updated to ${newStatus.replace('_', ' ')}`);
+      
+      // Recalculate fully booked dates
+      await calculateFullyBookedDates();
+      
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      alert('Error updating status: ' + error.message);
+    }
+  };
+
+  // Delete booking
+  const deleteBooking = async (bookingId, reason = '') => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          status: 'deleted',
+          deletion_reason: reason,
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      // Update local state
+      setBookings(prev => prev.filter(booking => booking.id !== bookingId));
+      
+      setShowDetails(false);
+      setSelectedBooking(null);
+      
+      alert('Booking deleted successfully!');
+      
+      // Recalculate fully booked dates
+      await calculateFullyBookedDates();
+      
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      alert('Error deleting booking: ' + error.message);
+    }
+  };
+
+  // Quick delete
+  const quickDeleteBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+      return;
+    }
+
+    const reason = prompt('Please provide a reason for deletion (optional):');
+    
+    try {
+      await deleteBooking(bookingId, reason);
+    } catch (error) {
+      console.error('Error in quick delete:', error);
+    }
+  };
+
+  // Get next status options
+  const getNextStatusOptions = (currentStatus) => {
+    const statusFlow = {
+      'requested': ['awaiting_store_visit', 'scheduled', 'cancelled'],
+      'awaiting_store_visit': ['scheduled', 'cancelled'],
+      'scheduled': ['in_progress', 'cancelled'],
+      'in_progress': ['completed', 'cancelled'],
+      'completed': [],
+      'cancelled': [],
+      'deleted': []
+    };
+    return statusFlow[currentStatus] || [];
+  };
+
+  // Export bookings to CSV
+  const exportBookingsToCSV = async () => {
+    try {
+      setIsExporting(true);
+      const headers = [
+        'ID', 'Customer Name', 'Email', 'Phone', 'Service', 
+        'Status', 'Booking Date', 'Location', 'Technician',
+        'Estimated Cost', 'Payment Status', 'Created Date'
+      ];
+      
+      const rows = bookings.map(booking => [
+        booking.id,
+        booking.name,
+        booking.email,
+        booking.contact,
+        booking.services?.name || booking.service || 'N/A',
+        booking.status,
+        booking.date,
+        booking.location,
+        booking.technicians?.name || 'Not assigned',
+        booking.estimated_cost,
+        booking.payment_status,
+        booking.created_at
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `bookings_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert(`Exported ${bookings.length} bookings successfully!`);
+    } catch (error) {
+      console.error('Error exporting bookings:', error);
+      alert('Error exporting bookings: ' + error.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Bulk actions
+  const handleBulkStatusUpdate = async (status) => {
+    if (selectedBookings.length === 0) return;
+    
+    if (!window.confirm(`Update ${selectedBookings.length} bookings to "${status.replace('_', ' ')}"?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .in('id', selectedBookings);
+
+      if (error) throw error;
+      
+      // Update local state
+      setBookings(prev => prev.map(booking => 
+        selectedBookings.includes(booking.id) ? { ...booking, status } : booking
+      ));
+      
+      setSelectedBookings([]);
+      setShowBulkActions(false);
+      alert(`Updated ${selectedBookings.length} bookings to ${status.replace('_', ' ')}`);
+      
+      // Recalculate fully booked dates
+      await calculateFullyBookedDates();
+      
+    } catch (error) {
+      console.error('Error updating bulk status:', error);
+      alert('Error updating bookings: ' + error.message);
+    }
+  };
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    const total = bookings.length;
+    const requested = bookings.filter(b => b.status === 'requested').length;
+    const awaiting = bookings.filter(b => b.status === 'awaiting_store_visit').length;
+    const scheduled = bookings.filter(b => b.status === 'scheduled').length;
+    const inProgress = bookings.filter(b => b.status === 'in_progress').length;
+    const completed = bookings.filter(b => b.status === 'completed').length;
+    const cancelled = bookings.filter(b => b.status === 'cancelled').length;
+    const revenue = bookings
+      .filter(b => b.status === 'completed')
+      .reduce((sum, b) => sum + (parseFloat(b.final_cost) || parseFloat(b.estimated_cost) || 0), 0);
+    const upcoming = bookings.filter(b => 
+      (b.status === 'scheduled' || b.status === 'in_progress') && 
+      b.date && new Date(b.date) >= new Date()
+    ).length;
+    const pendingPayment = bookings.filter(b => 
+      b.payment_status === 'pending' || b.payment_status === 'unpaid'
+    ).length;
+
+    return {
+      total, requested, awaiting, scheduled, inProgress,
+      completed, cancelled, revenue, upcoming, pendingPayment
+    };
+  }, [bookings]);
+
+  // Cancel Booking Modal
+  const renderCancelModal = () => {
+    if (!showCancelModal || !cancellingBooking) return null;
+
+    const handleCancel = () => {
+      if (selectedReason === 'other' && !cancellationReason.trim()) {
+        alert('Please provide a cancellation reason');
+        return;
+      }
+
+      const reason = selectedReason === 'other' 
+        ? cancellationReason 
+        : cancellationReasons.find(r => r.id === selectedReason)?.description || 'No reason provided';
+
+      // Handle bulk cancellation
+      if (cancellingBooking.id === 'bulk') {
+        if (!window.confirm(`Cancel ${selectedBookings.length} bookings? This action cannot be undone.`)) {
+          return;
+        }
+        
+        selectedBookings.forEach(id => updateBookingStatus(id, 'cancelled', reason));
+        setSelectedBookings([]);
+        setShowBulkActions(false);
+      } else {
+        // Handle single booking cancellation
+        updateBookingStatus(cancellingBooking.id, 'cancelled', reason);
+      }
+      
+      setShowCancelModal(false);
+      setSelectedReason('');
+      setCancellationReason('');
+      setCancellingBooking(null);
+      setShowDetails(false);
+    };
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1002,
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '30px',
+          maxWidth: '500px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
+              {cancellingBooking.id === 'bulk' 
+                ? `Cancel ${selectedBookings.length} Bookings` 
+                : `Cancel Booking #${cancellingBooking.id}`}
+            </h3>
+            <button
+              onClick={() => {
+                setShowCancelModal(false);
+                setSelectedReason('');
+                setCancellationReason('');
+                setCancellingBooking(null);
+              }}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              <FaTimes />
+            </button>
+          </div>
+
+          <div style={{ marginBottom: '24px' }}>
+            <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+              {cancellingBooking.id === 'bulk' ? (
+                <>
+                  <strong>{selectedBookings.length} bookings selected</strong><br/>
+                  You are about to cancel multiple bookings. Please provide a reason.
+                </>
+              ) : (
+                <>
+                  <strong>Booking #{cancellingBooking.id}</strong><br/>
+                  Customer: {cancellingBooking.name}<br/>
+                  Service: {cancellingBooking.services?.name || cancellingBooking.service || 'Service'}<br/>
+                  Date: {formatDate(cancellingBooking.date)}
+                </>
+              )}
+            </p>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', color: '#374151' }}>
+                Select Cancellation Reason:
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                {cancellationReasons.map(reason => (
+                  <label
+                    key={reason.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: `2px solid ${selectedReason === reason.id ? '#3b82f6' : '#e5e7eb'}`,
+                      backgroundColor: selectedReason === reason.id ? '#eff6ff' : 'white',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="cancellationReason"
+                      value={reason.id}
+                      checked={selectedReason === reason.id}
+                      onChange={(e) => setSelectedReason(e.target.value)}
+                      style={{ marginRight: '12px', marginTop: '2px' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                        {reason.label}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                        {reason.description}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {selectedReason === 'other' && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+                  Specify Cancellation Reason:
+                </label>
+                <textarea
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Please provide detailed reason for cancellation..."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => {
+                setShowCancelModal(false);
+                setSelectedReason('');
+                setCancellationReason('');
+                setCancellingBooking(null);
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            
+            <button
+              onClick={handleCancel}
+              disabled={!selectedReason || (selectedReason === 'other' && !cancellationReason.trim())}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: selectedReason ? '#ef4444' : '#d1d5db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: selectedReason ? 'pointer' : 'not-allowed',
+                opacity: selectedReason ? 1 : 0.6
+              }}
+            >
+              <FaTimesCircle />
+              {cancellingBooking.id === 'bulk' ? 'Confirm Bulk Cancellation' : 'Confirm Cancellation'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render chatbox component
+  const renderChatbox = () => {
+    if (!showChatbox || !selectedBooking) return null;
+
+    const customerName = selectedBooking.name || 'Customer';
+    const serviceName = selectedBooking.services?.name || selectedBooking.service || 'Service';
+
+    return (
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        width: '400px',
+        height: '600px',
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        {/* Chat Header */}
+        <div style={{
+          backgroundColor: '#3b82f6',
+          color: 'white',
+          padding: '16px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
+              Chat with {customerName}
+            </h4>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
+              Booking #{selectedBooking.id} • {serviceName}
+            </p>
+          </div>
+          <button
+            onClick={closeChatbox}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '18px',
+              padding: '4px'
+            }}
+          >
+            <FaTimes />
+          </button>
+        </div>
+
+        {/* Quick Actions */}
+        <div style={{
+          backgroundColor: '#f3f4f6',
+          padding: '12px 20px',
+          display: 'flex',
+          gap: '10px',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          <button
+            onClick={() => window.open(`tel:${selectedBooking.contact}`)}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <FaPhoneAlt size={12} />
+            Call
+          </button>
+          <button
+            onClick={() => window.open(`mailto:${selectedBooking.email}`)}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#ec4899',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <FaEnvelopeOpen size={12} />
+            Email
+          </button>
+        </div>
+
+        {/* Messages Container */}
+        <div style={{
+          flex: 1,
+          padding: '20px',
+          overflowY: 'auto',
+          backgroundColor: '#f8fafc',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          {chatLoading ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{
+                width: '30px',
+                height: '30px',
+                border: '3px solid #e5e7eb',
+                borderTop: '3px solid #3b82f6',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto'
+              }} />
+              <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '8px' }}>
+                Loading messages...
+              </p>
+            </div>
+          ) : chatMessages.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <FaComments size={48} color="#d1d5db" />
+              <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '12px' }}>
+                No messages yet. Start the conversation!
+              </p>
+            </div>
+          ) : (
+            chatMessages.map((message, index) => (
+              <div
+                key={message.id || index}
+                style={{
+                  alignSelf: message.sender_type === 'admin' ? 'flex-end' : 'flex-start',
+                  maxWidth: '80%'
+                }}
+              >
+                <div style={{
+                  backgroundColor: message.sender_type === 'admin' ? '#3b82f6' : '#e5e7eb',
+                  color: message.sender_type === 'admin' ? 'white' : '#111827',
+                  padding: '10px 14px',
+                  borderRadius: message.sender_type === 'admin' 
+                    ? '12px 12px 0 12px' 
+                    : '12px 12px 12px 0',
+                  fontSize: '14px',
+                  lineHeight: '1.4'
+                }}>
+                  {message.message}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: '#6b7280',
+                  marginTop: '4px',
+                  textAlign: message.sender_type === 'admin' ? 'right' : 'left',
+                  padding: '0 4px'
+                }}>
+                  {formatDateTime(message.created_at)}
+                  {message.sender_type === 'admin' && ' • You'}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Message Input */}
+        <div style={{
+          borderTop: '1px solid #e5e7eb',
+          padding: '16px 20px',
+          backgroundColor: 'white'
+        }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              placeholder="Type your message..."
+              disabled={isSendingMessage}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!newMessage.trim() || isSendingMessage}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: newMessage.trim() ? '#3b82f6' : '#d1d5db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: newMessage.trim() ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              {isSendingMessage ? (
+                <>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderTop: '2px solid white',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <FaPaperPlane />
+                  Send
+                </>
+              )}
+            </button>
+          </div>
+          <p style={{
+            fontSize: '11px',
+            color: '#6b7280',
+            margin: '8px 0 0 0',
+            textAlign: 'center'
+          }}>
+            Messages are saved and customer will receive email notification
+          </p>
+        </div>
+      </div>
+    );
+  };
+// Add this after the renderChatbox function and before the BulkActions component
+
+// ================= BOOKING DETAILS MODAL =================
+const BookingDetailsModal = () => {
+  if (!showDetails || !selectedBooking) return null;
+
+  const service = selectedBooking.services || {};
+  const technician = selectedBooking.technicians || {};
+  const statusColor = getBookingStatusColor(selectedBooking.status);
+  const isRecurring = service.service_type === 'recurring';
+  
+  // Safely format dates
+  const safeFormatDate = (dateString) => {
+    if (!dateString) return 'Not specified';
+    try {
+      return formatDate(dateString);
+    } catch (e) {
+      return 'Invalid date';
+    }
+  };
+  
+  const safeFormatCurrency = (amount) => {
+    if (!amount) return '₱0';
+    try {
+      return formatCurrency(amount);
+    } catch (e) {
+      return '₱0';
+    }
+  };
 
   return (
     <div style={{
@@ -426,502 +2282,1770 @@ const OrderDetailsModal = ({ order, onClose }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 50,
+      zIndex: 1001,
       padding: '20px'
     }}>
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
         width: '100%',
-        maxWidth: '700px',
+        maxWidth: '800px',
         maxHeight: '90vh',
         overflowY: 'auto',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        position: 'relative'
       }}>
-        {/* Modal Header */}
+        {/* Header */}
         <div style={{
           padding: '24px',
           borderBottom: '1px solid #e5e7eb',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'flex-start'
         }}>
-          <h2 style={{
-            fontSize: '20px',
-            fontWeight: '600',
-            color: '#111827',
-            margin: 0
-          }}>
-            Order #{order.id}
-          </h2>
+          <div>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#111827',
+              margin: '0 0 4px 0'
+            }}>
+              Booking #{selectedBooking.id}
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: '20px',
+                fontSize: '14px',
+                fontWeight: '600',
+                backgroundColor: statusColor.bg,
+                color: statusColor.text
+              }}>
+                {statusColor.label}
+              </span>
+              <span style={{ color: '#6b7280', fontSize: '14px' }}>
+                {safeFormatDate(selectedBooking.created_at)}
+              </span>
+              {isRecurring && (
+                <span style={{
+                  backgroundColor: '#dbeafe',
+                  color: '#1d4ed8',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  🔄 Recurring Service
+                </span>
+              )}
+            </div>
+          </div>
+          
           <button
-            onClick={onClose}
+            onClick={() => {
+              setShowDetails(false);
+              setSelectedBooking(null);
+            }}
             style={{
               padding: '8px',
-              backgroundColor: 'transparent',
+              backgroundColor: '#f3f4f6',
+              color: '#374151',
               border: 'none',
-              fontSize: '24px',
-              color: '#6b7280',
+              borderRadius: '8px',
               cursor: 'pointer',
-              lineHeight: 1
+              fontSize: '20px',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
-            ×
+            ✕
           </button>
         </div>
-        
-        {/* Modal Content */}
+
+        {/* Content */}
         <div style={{ padding: '24px' }}>
-          {/* Customer Info */}
-          <div style={{ marginBottom: '24px' }}>
+          {/* Customer Information */}
+          <div style={{ marginBottom: '32px' }}>
             <h3 style={{
-              fontSize: '16px',
+              fontSize: '18px',
               fontWeight: '600',
               color: '#111827',
-              marginBottom: '16px'
+              margin: '0 0 16px 0',
+              paddingBottom: '8px',
+              borderBottom: '2px solid #e5e7eb'
             }}>
               Customer Information
             </h3>
             <div style={{
               display: 'grid',
-              gap: '12px'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '20px'
             }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}>
-                <FaUser size={16} color="#6b7280" />
-                <div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#6b7280'
-                  }}>
-                    Name
-                  </div>
-                  <div style={{
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    color: '#111827'
-                  }}>
-                    {order.customer_name}
-                  </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  Customer Name
+                </label>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#111827'
+                }}>
+                  {selectedBooking.name || 'Not specified'}
                 </div>
               </div>
               
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}>
-                <FaEnvelope size={16} color="#6b7280" />
-                <div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#6b7280'
-                  }}>
-                    Email
-                  </div>
-                  <div style={{
-                    fontSize: '16px',
-                    color: '#111827'
-                  }}>
-                    {order.customer_email}
-                  </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  Email Address
+                </label>
+                <div style={{ fontSize: '16px', color: '#111827' }}>
+                  {selectedBooking.email || 'Not specified'}
                 </div>
               </div>
               
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}>
-                <FaPhone size={16} color="#6b7280" />
-                <div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#6b7280'
-                  }}>
-                    Phone
-                  </div>
-                  <div style={{
-                    fontSize: '16px',
-                    color: '#111827'
-                  }}>
-                    {order.customer_phone}
-                  </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  Phone Number
+                </label>
+                <div style={{ fontSize: '16px', color: '#111827' }}>
+                  {selectedBooking.contact || 'Not specified'}
+                </div>
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  Address/Location
+                </label>
+                <div style={{ fontSize: '16px', color: '#111827' }}>
+                  📍 {selectedBooking.location || 'Not specified'}
                 </div>
               </div>
             </div>
           </div>
-          
-          {/* Order Details */}
-          <div style={{ marginBottom: '24px' }}>
+
+          {/* Service Details */}
+          <div style={{ marginBottom: '32px' }}>
             <h3 style={{
-              fontSize: '16px',
+              fontSize: '18px',
               fontWeight: '600',
               color: '#111827',
-              marginBottom: '16px'
+              margin: '0 0 16px 0',
+              paddingBottom: '8px',
+              borderBottom: '2px solid #e5e7eb'
             }}>
-              Order Details
+              Service Details
             </h3>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '16px'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '20px'
             }}>
               <div>
-                <div style={{
+                <label style={{
+                  display: 'block',
                   fontSize: '14px',
                   color: '#6b7280',
                   marginBottom: '4px'
                 }}>
-                  Status
-                </div>
-                <StatusBadge status={order.status} />
-              </div>
-              
-              <div>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Channel
-                </div>
+                  Service Type
+                </label>
                 <div style={{
                   fontSize: '16px',
-                  fontWeight: '500',
+                  fontWeight: '600',
                   color: '#111827'
                 }}>
-                  {order.channel === 'mobile' ? 'Mobile App' : 'Walk-in'}
+                  {service.name || selectedBooking.service || 'Not specified'}
                 </div>
               </div>
               
               <div>
-                <div style={{
+                <label style={{
+                  display: 'block',
                   fontSize: '14px',
                   color: '#6b7280',
                   marginBottom: '4px'
                 }}>
-                  Payment Method
+                  Category
+                </label>
+                <div style={{ fontSize: '16px', color: '#111827' }}>
+                  {service.category || 'Not specified'}
                 </div>
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  {isRecurring ? 'Start Date' : 'Service Date'}
+                </label>
+                <div style={{ fontSize: '16px', color: '#111827' }}>
+                  📅 {safeFormatDate(selectedBooking.date)}
+                </div>
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  Service Type
+                </label>
                 <div style={{
                   fontSize: '16px',
-                  fontWeight: '500',
                   color: '#111827',
-                  textTransform: 'capitalize'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}>
-                  {order.payment_method}
-                </div>
-              </div>
-              
-              <div>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Order Date
-                </div>
-                <div style={{
-                  fontSize: '16px',
-                  color: '#111827'
-                }}>
-                  {new Date(order.created_at).toLocaleDateString()}
+                  {service.service_type === 'one_time' ? '🔹 One Time' : 
+                   service.service_type === 'recurring' ? '🔄 Recurring' : 
+                   service.service_type === 'project' ? '🏗️ Project' : 
+                   'Not specified'}
                 </div>
               </div>
             </div>
-          </div>
-          
-          {/* Products Section */}
-          {order.products && order.products.length > 0 && (
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#111827',
-                marginBottom: '16px'
-              }}>
-                Products ({order.total_items || 0} items)
-              </h3>
-              <div style={{
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                padding: '16px',
-                maxHeight: '200px',
-                overflowY: 'auto'
-              }}>
-                {order.products.map((product, index) => (
-                  <div key={index} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 0',
-                    borderBottom: index < order.products.length - 1 ? '1px solid #e5e7eb' : 'none'
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '500', color: '#111827' }}>
-                        {product.name}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                        ₱{product.price?.toLocaleString() || '0'} × {product.quantity || 1}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: '600', color: '#059669' }}>
-                      ₱{((product.price || 0) * (product.quantity || 1)).toLocaleString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Total Amount */}
-          <div style={{
-            backgroundColor: '#f9fafb',
-            borderRadius: '8px',
-            padding: '20px'
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#111827',
-              marginBottom: '16px'
+            
+            {/* Price Information */}
+            <div style={{
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              padding: '16px',
+              marginTop: '16px'
             }}>
-              Amount Summary
-            </h3>
-            <div style={{ display: 'grid', gap: '8px' }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{ color: '#6b7280' }}>Subtotal:</span>
-                <span>₱{order.subtotal?.toLocaleString() || '0'}</span>
-              </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{ color: '#6b7280' }}>Tax:</span>
-                <span>₱{order.tax?.toLocaleString() || '0'}</span>
-              </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{ color: '#6b7280' }}>Discount:</span>
-                <span style={{ color: '#ef4444' }}>
-                  -₱{order.discount?.toLocaleString() || '0'}
-                </span>
-              </div>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                paddingTop: '12px',
-                borderTop: '1px solid #e5e7eb',
-                marginTop: '8px'
+                marginBottom: '8px'
               }}>
-                <span style={{
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                  Estimated Cost
+                </span>
+                <span style={{ fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+                  {safeFormatCurrency(selectedBooking.estimated_cost)}
+                </span>
+              </div>
+              
+              {selectedBooking.final_cost && selectedBooking.final_cost !== selectedBooking.estimated_cost && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                    Final Cost
+                  </span>
+                  <span style={{ fontSize: '18px', fontWeight: '700', color: '#10b981' }}>
+                    {safeFormatCurrency(selectedBooking.final_cost)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Technician & Assignment */}
+          <div style={{ marginBottom: '32px' }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827',
+              margin: '0 0 16px 0',
+              paddingBottom: '8px',
+              borderBottom: '2px solid #e5e7eb'
+            }}>
+              Technician Assignment
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '20px'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  Assigned Technician
+                </label>
+                <div style={{
+                  fontSize: '16px',
                   fontWeight: '600',
-                  fontSize: '18px',
                   color: '#111827'
                 }}>
-                  Total:
-                </span>
-                <span style={{
-                  fontWeight: '700',
-                  fontSize: '20px',
-                  color: '#3b82f6'
+                  {technician.name || 'Not assigned'}
+                </div>
+                {technician.phone && (
+                  <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
+                    📞 {technician.phone}
+                  </div>
+                )}
+                {technician.specialization && (
+                  <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '2px' }}>
+                    ⚙️ {technician.specialization}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
                 }}>
-                  ₱{order.total?.toLocaleString() || '0'}
-                </span>
+                  Payment Status
+                </label>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: selectedBooking.payment_status === 'paid' ? '#10b981' :
+                         selectedBooking.payment_status === 'pending' ? '#f59e0b' :
+                         selectedBooking.payment_status === 'unpaid' ? '#ef4444' : '#6b7280'
+                }}>
+                  {selectedBooking.payment_status?.toUpperCase() || 'PENDING'}
+                </div>
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  Priority
+                </label>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: selectedBooking.service_priority === 1 ? '#ef4444' : 
+                         selectedBooking.service_priority === 2 ? '#f59e0b' : '#10b981'
+                }}>
+                  {selectedBooking.service_priority === 1 ? '🔴 High Priority' :
+                   selectedBooking.service_priority === 2 ? '🟡 Medium Priority' :
+                   '🟢 Normal Priority'}
+                </div>
               </div>
             </div>
           </div>
-          
-          {/* Notes */}
-          {order.notes && (
-            <div style={{ marginTop: '24px' }}>
+
+          {/* Customer Message */}
+          {selectedBooking.message && (
+            <div style={{ marginBottom: '32px' }}>
               <h3 style={{
-                fontSize: '16px',
+                fontSize: '18px',
                 fontWeight: '600',
                 color: '#111827',
-                marginBottom: '12px'
+                margin: '0 0 16px 0',
+                paddingBottom: '8px',
+                borderBottom: '2px solid #e5e7eb'
               }}>
-                Notes
+                Customer Message
               </h3>
               <div style={{
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
+                backgroundColor: '#eff6ff',
                 padding: '16px',
-                fontSize: '14px',
-                color: '#4b5563'
+                borderRadius: '8px',
+                borderLeft: '4px solid #3b82f6'
               }}>
-                {order.notes}
+                <p style={{
+                  fontSize: '15px',
+                  color: '#1e40af',
+                  margin: 0,
+                  lineHeight: '1.6',
+                  fontStyle: 'italic'
+                }}>
+                  "{selectedBooking.message}"
+                </p>
               </div>
             </div>
           )}
-        </div>
-        
-        {/* Modal Footer */}
-        <div style={{
-          padding: '24px',
-          borderTop: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '12px'
-        }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Close
-          </button>
+
+          {/* Admin Notes */}
+          {selectedBooking.notes && (
+            <div style={{ marginBottom: '32px' }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#111827',
+                margin: '0 0 16px 0',
+                paddingBottom: '8px',
+                borderBottom: '2px solid #e5e7eb'
+              }}>
+                Admin Notes
+              </h3>
+              <div style={{
+                backgroundColor: '#f0fdf4',
+                padding: '16px',
+                borderRadius: '8px',
+                borderLeft: '4px solid #10b981'
+              }}>
+                <p style={{
+                  fontSize: '15px',
+                  color: '#065f46',
+                  margin: 0,
+                  lineHeight: '1.6'
+                }}>
+                  {selectedBooking.notes}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Cancellation Details */}
+          {selectedBooking.status === 'cancelled' && selectedBooking.cancellation_reason && (
+            <div style={{ marginBottom: '32px' }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#ef4444',
+                margin: '0 0 16px 0',
+                paddingBottom: '8px',
+                borderBottom: '2px solid #fecaca'
+              }}>
+                Cancellation Details
+              </h3>
+              <div style={{
+                backgroundColor: '#fef2f2',
+                padding: '16px',
+                borderRadius: '8px',
+                borderLeft: '4px solid #ef4444'
+              }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    color: '#991b1b',
+                    marginBottom: '4px',
+                    fontWeight: '600'
+                  }}>
+                    Reason for Cancellation:
+                  </label>
+                  <div style={{ fontSize: '15px', color: '#111827' }}>
+                    {selectedBooking.cancellation_reason}
+                  </div>
+                </div>
+                {selectedBooking.cancelled_at && (
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      color: '#991b1b',
+                      marginBottom: '4px',
+                      fontWeight: '600'
+                    }}>
+                      Cancelled On:
+                    </label>
+                    <div style={{ fontSize: '15px', color: '#111827' }}>
+                      {safeFormatDate(selectedBooking.cancelled_at)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'flex-end',
+            borderTop: '1px solid #e5e7eb',
+            paddingTop: '24px',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => {
+                setShowDetails(false);
+                openChatbox(selectedBooking);
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaComments />
+              Message Customer
+            </button>
+            
+            <button
+              onClick={() => window.open(`tel:${selectedBooking.contact}`)}
+              disabled={!selectedBooking.contact}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: selectedBooking.contact ? '#10b981' : '#d1d5db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: selectedBooking.contact ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaPhoneAlt />
+              Call Customer
+            </button>
+            
+            <button
+              onClick={() => window.open(`mailto:${selectedBooking.email}`)}
+              disabled={!selectedBooking.email}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: selectedBooking.email ? '#ec4899' : '#d1d5db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: selectedBooking.email ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaEnvelopeOpen />
+              Email Customer
+            </button>
+
+            {/* Status Update Buttons */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {getNextStatusOptions(selectedBooking.status).map(nextStatus => (
+                nextStatus === 'cancelled' ? (
+                  <button
+                    key={nextStatus}
+                    onClick={() => {
+                      setShowDetails(false);
+                      setCancellingBooking(selectedBooking);
+                      setShowCancelModal(true);
+                    }}
+                    style={{
+                      padding: '12px 24px',
+                      backgroundColor: '#fef2f2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <FaTimesCircle />
+                    Cancel Booking
+                  </button>
+                ) : (
+                  <button
+                    key={nextStatus}
+                    onClick={() => {
+                      updateBookingStatus(selectedBooking.id, nextStatus);
+                      setShowDetails(false);
+                    }}
+                    style={{
+                      padding: '12px 24px',
+                      backgroundColor: nextStatus === 'completed' ? '#10b981' :
+                                     nextStatus === 'in_progress' ? '#3b82f6' : '#f3f4f6',
+                      color: nextStatus === 'completed' ? 'white' :
+                            nextStatus === 'in_progress' ? 'white' : '#374151',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    {nextStatus === 'completed' && <FaCheckCircle />}
+                    {nextStatus === 'in_progress' && <FaTools />}
+                    Mark as {nextStatus.replace('_', ' ')}
+                  </button>
+                )
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+  // Chat button component
+  const renderChatButton = (booking) => (
+    <button
+      onClick={() => openChatbox(booking)}
+      style={{
+        padding: '8px 12px',
+        backgroundColor: '#3b82f6',
+        color: 'white',
+        border: 'none',
+        borderRadius: '6px',
+        fontSize: '13px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '6px',
+        transition: 'all 0.2s ease'
+      }}
+    >
+      <FaComments size={12} />
+      Message
+    </button>
+  );
 
-// ====================
-// HELPER FUNCTIONS
-// ====================
-const getStatusColor = (status) => {
-  const colors = {
-    pending: { background: '#fffbeb', color: '#f59e0b', border: '#fcd34d' },
-    confirmed: { background: '#e0f2fe', color: '#0284c7', border: '#7dd3fc' },
-    in_progress: { background: '#f0f9ff', color: '#0ea5e9', border: '#bae6fd' },
-    completed: { background: '#f0fdf4', color: '#16a34a', border: '#86efac' },
-    cancelled: { background: '#fef2f2', color: '#dc2626', border: '#fca5a5' }
+  // Bulk actions component
+  const BulkActions = () => {
+    if (selectedBookings.length === 0) return null;
+    
+    return (
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        backgroundColor: 'white',
+        padding: '20px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        zIndex: 100,
+        maxWidth: '400px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <FaCheckCircle color="#10b981" size={20} />
+          <span style={{ fontWeight: '600', fontSize: '16px' }}>
+            {selectedBookings.length} booking(s) selected
+          </span>
+          <button 
+            onClick={() => {
+              setSelectedBookings([]);
+              setShowBulkActions(false);
+            }}
+            style={{ 
+              marginLeft: 'auto', 
+              background: 'none', 
+              border: 'none', 
+              cursor: 'pointer',
+              fontSize: '18px',
+              color: '#6b7280'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button
+            onClick={() => handleBulkStatusUpdate('scheduled')}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#d1fae5',
+              color: '#065f46',
+              border: '1px solid #a7f3d0',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaCalendarCheck /> Mark as Scheduled
+          </button>
+          
+          <button
+            onClick={() => handleBulkStatusUpdate('in_progress')}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#e0f2fe',
+              color: '#0369a1',
+              border: '1px solid #bae6fd',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaTools /> Mark as In Progress
+          </button>
+          
+          <button
+            onClick={() => handleBulkStatusUpdate('completed')}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaCheck /> Mark as Completed
+          </button>
+          
+          <button
+            onClick={() => {
+              setCancellingBooking({ id: 'bulk', name: `${selectedBookings.length} bookings` });
+              setShowCancelModal(true);
+            }}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#fef2f2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaTimesCircle /> Cancel Selected
+          </button>
+        </div>
+      </div>
+    );
   };
-  return colors[status] || { background: '#f3f4f6', color: '#6b7280', border: '#d1d5db' };
-};
 
-const getCategoryColor = (category) => {
-  switch (category) {
-    case 'maintenance':
-      return 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
-    case 'repair':
-      return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-    case 'tires':
-      return 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-    case 'car_wash':
-      return 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)';
-    case 'inspection':
-      return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-    default:
-      return 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
-  }
-};
+  
 
-// ====================
-// ORDERS SCREEN COMPONENT
-// ====================
-const OrdersScreen = ({ orders, fetchOrders }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const getFilteredOrders = () => {
-    let filtered = [...orders];
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(order =>
-        order.customer_name?.toLowerCase().includes(term) ||
-        order.customer_email?.toLowerCase().includes(term) ||
-        order.customer_phone?.includes(searchTerm) ||
-        order.id?.toString().includes(searchTerm) ||
-        order.products?.some(product => 
-          product.name?.toLowerCase().includes(term)
-        )
-      );
+  // Add CSS for spinner animation
+  const spinnerStyle = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
+  `;
 
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(order => order.status === statusFilter);
-    }
+  return (
+    <>
+      <style>{spinnerStyle}</style>
+      <div style={{ padding: '20px' }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#111827',
+              margin: '0 0 4px 0'
+            }}>
+              Bookings Management
+            </h2>
+            <p style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              margin: 0
+            }}>
+              Manage customer service bookings and schedules
+            </p>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          
+            
+            <button
+              onClick={fetchAllData}
+              disabled={loading}
+              style={{
+                padding: '10px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                opacity: loading ? 0.7 : 1
+              }}
+            >
+              <FaSync style={loading ? { animation: 'spin 1s linear infinite' } : {}} />
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button
+              onClick={exportBookingsToCSV}
+              disabled={isExporting}
+              style={{
+                padding: '10px 16px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                opacity: isExporting ? 0.7 : 1
+              }}
+            >
+              <FaFileCsv />
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </button>
+          </div>
+        </div>
 
-    return filtered;
-  };
+        {/* Stats Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '16px',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            backgroundColor: '#fce7f3',
+            padding: '20px',
+            borderRadius: '12px',
+            borderLeft: '4px solid #EC4899',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <FaCalendarCheck size={20} color="#EC4899" />
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>
+                Total Bookings
+              </div>
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
+              {stats.total}
+            </div>
+          </div>
+          
+          <div style={{
+            backgroundColor: '#fffbeb',
+            padding: '20px',
+            borderRadius: '12px',
+            borderLeft: '4px solid #F59E0B',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <FaClock size={20} color="#F59E0B" />
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>
+                Upcoming
+              </div>
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
+              {stats.upcoming}
+            </div>
+          </div>
+          
+          <div style={{
+            backgroundColor: '#eff6ff',
+            padding: '20px',
+            borderRadius: '12px',
+            borderLeft: '4px solid #3B82F6',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <FaTools size={20} color="#3B82F6" />
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>
+                In Progress
+              </div>
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
+              {stats.inProgress}
+            </div>
+          </div>
+          
+          <div style={{
+            backgroundColor: '#d1fae5',
+            padding: '20px',
+            borderRadius: '12px',
+            borderLeft: '4px solid #10B981',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <FaDollarSign size={20} color="#10B981" />
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>
+                Revenue
+              </div>
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
+              {formatCurrency(stats.revenue)}
+            </div>
+          </div>
+        </div>
 
-  const updateOrderStatus = async (orderId, newStatus) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId);
+        
 
-      if (error) throw error;
+        {/* Bookings List */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          position: 'relative'
+        }}>
+          {loading ? (
+            <div style={{ 
+              padding: '48px 16px', 
+              textAlign: 'center' 
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                border: '4px solid #e5e7eb',
+                borderTop: '4px solid #3b82f6',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 16px auto'
+              }} />
+              <p style={{ color: '#6b7280' }}>Loading bookings from database...</p>
+            </div>
+          ) : bookings.length === 0 ? (
+            <div style={{ 
+              padding: '48px 16px', 
+              textAlign: 'center' 
+            }}>
+              <FaCalendarCheck size={48} color="#d1d5db" />
+              <h3 style={{ 
+                margin: '16px 0 8px 0', 
+                color: '#111827', 
+                fontSize: '18px' 
+              }}>
+                No Bookings Found
+              </h3>
+              <p style={{ 
+                color: '#6b7280', 
+                fontSize: '14px',
+                margin: 0 
+              }}>
+                {search ? 'No bookings match your search criteria' : 'No bookings available in the database'}
+              </p>
+              <button
+                onClick={fetchAllData}
+                style={{
+                  marginTop: '16px',
+                  padding: '8px 16px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Try Again
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Bulk selection header */}
+              {selectedBookings.length > 0 && (
+                <div style={{
+                  padding: '16px 20px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FaCheckCircle />
+                    <span style={{ fontWeight: '600' }}>
+                      {selectedBookings.length} booking(s) selected
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => setShowBulkActions(!showBulkActions)}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Bulk Actions
+                    </button>
+                    <button
+                      onClick={() => setSelectedBookings([])}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {bookings.map((booking) => {
+                const service = booking.services || {};
+                const statusColor = getBookingStatusColor(booking.status);
+                const hasMessage = !!booking.message;
+                const isRecurring = service.service_type === 'recurring';
+                const isSelected = selectedBookings.includes(booking.id);
+                
+                return (
+                  <div key={booking.id} style={{
+                    padding: '20px',
+                    borderBottom: '1px solid #e5e7eb',
+                    transition: 'background-color 0.2s ease',
+                    backgroundColor: isSelected ? '#eff6ff' : 'white',
+                    ':hover': {
+                      backgroundColor: isSelected ? '#dbeafe' : '#f9fafb'
+                    }
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '20px'
+                    }}>
+                      {/* Selection checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedBookings(prev => [...prev, booking.id]);
+                            setShowBulkActions(true);
+                          } else {
+                            setSelectedBookings(prev => prev.filter(id => id !== booking.id));
+                          }
+                        }}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer',
+                          marginTop: '4px'
+                        }}
+                      />
+                      
+                      {/* Booking Content */}
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          marginBottom: '12px',
+                          flexWrap: 'wrap'
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            {getServiceIcon(service.category)}
+                            <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                              {booking.name || 'Customer'}
+                            </span>
+                          </div>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            backgroundColor: statusColor.bg,
+                            color: statusColor.text
+                          }}>
+                            {statusColor.label}
+                          </span>
+                          {isRecurring && (
+                            <span style={{
+                              backgroundColor: '#dbeafe',
+                              color: '#1d4ed8',
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <FaCalendarWeek size={10} />
+                              Recurring
+                            </span>
+                          )}
+                          {hasMessage && (
+                            <span style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              color: '#3b82f6',
+                              backgroundColor: '#eff6ff',
+                              padding: '4px 8px',
+                              borderRadius: '12px'
+                            }}>
+                              <FaComment size={10} />
+                              Has Message
+                            </span>
+                          )}
+                          {booking.service_priority === 1 && (
+                            <span style={{
+                              backgroundColor: '#fee2e2',
+                              color: '#dc2626',
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <FaExclamationTriangle size={10} />
+                              High Priority
+                            </span>
+                          )}
+                          <span style={{
+                            fontSize: '12px',
+                            color: '#6b7280',
+                            marginLeft: 'auto'
+                          }}>
+                            {formatDate(booking.created_at)}
+                          </span>
+                        </div>
+                        
+                        {/* Service Info */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          marginBottom: '12px'
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <FaTools size={14} color="#6b7280" />
+                            <span style={{ fontSize: '14px', color: '#374151' }}>
+                              {service.name || booking.service || 'Service'}
+                            </span>
+                          </div>
+                          {service.category && (
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                              ({service.category})
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Contact & Location */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: '16px',
+                          marginBottom: '12px'
+                        }}>
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                              Contact
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                              📱 {booking.contact || 'No phone'}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                              Email
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#374151' }}>
+                              {booking.email || 'No email'}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                              Location
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#374151' }}>
+                              📍 {booking.location || 'Not specified'}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                              {isRecurring ? 'Start Date' : 'Service Date'}
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                              {formatDate(booking.date)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Message Preview */}
+                        {booking.message && (
+                          <div style={{
+                            backgroundColor: '#f9fafb',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            marginBottom: '12px',
+                            borderLeft: '4px solid #3b82f6'
+                          }}>
+                            <div style={{
+                              fontSize: '12px',
+                              color: '#6b7280',
+                              fontWeight: '600',
+                              marginBottom: '4px'
+                            }}>
+                              Customer Message:
+                            </div>
+                            <p style={{
+                              fontSize: '13px',
+                              color: '#4b5563',
+                              margin: 0,
+                              lineHeight: '1.4',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
+                              "{booking.message}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Actions */}
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        minWidth: '140px'
+                      }}>
+                        {renderChatButton(booking)}
+                        
+                        <button
+                          onClick={() => {
+                            setSelectedBooking(booking);
+                            setShowDetails(true);
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#f3f4f6',
+                            color: '#374151',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <FaEye size={12} />
+                          View Details
+                        </button>
+                        
+                        {/* Quick status update */}
+                        {getNextStatusOptions(booking.status).map(nextStatus => (
+                          nextStatus === 'cancelled' ? (
+                            <button
+                              key={nextStatus}
+                              onClick={() => {
+                                setCancellingBooking(booking);
+                                setShowCancelModal(true);
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                backgroundColor: '#fef2f2',
+                                color: '#dc2626',
+                                border: '1px solid #fecaca',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              <FaTimesCircle size={12} />
+                              Cancel
+                            </button>
+                          ) : (
+                            <button
+                              key={nextStatus}
+                              onClick={() => updateBookingStatus(booking.id, nextStatus)}
+                              style={{
+                                padding: '8px 12px',
+                                backgroundColor: nextStatus === 'completed' ? '#10b981' :
+                                               nextStatus === 'in_progress' ? '#3b82f6' : '#f3f4f6',
+                                color: nextStatus === 'completed' ? 'white' :
+                                      nextStatus === 'in_progress' ? 'white' : '#374151',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              {nextStatus === 'completed' && <FaCheckCircle size={12} />}
+                              {nextStatus === 'in_progress' && <FaTools size={12} />}
+                              {nextStatus.replace('_', ' ')}
+                            </button>
+                          )
+                        ))}
+                        
+                        {/* Quick Delete Button */}
+                        <button
+                          onClick={() => quickDeleteBooking(booking.id)}
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#fef2f2',
+                            color: '#dc2626',
+                            border: '1px solid #fecaca',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <FaTrash size={12} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      </div>
       
-      // Refresh orders after update
-      if (fetchOrders) {
-        fetchOrders();
+            {BookingDetailsModal()}
+      {/* Chatbox */}
+      {renderChatbox()}
+
+      {/* Bulk Actions */}
+      {showBulkActions && <BulkActions />}
+
+      {/* Cancel Modal */}
+      {renderCancelModal()}
+    </>
+  );
+};
+
+// ====================
+// SERVICE REVIEWS TAB COMPONENT
+// ====================
+
+const ServiceReviewsTab = () => {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [ratingFilter, setRatingFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [selectedReview, setSelectedReview] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  useEffect(() => {
+    fetchServiceReviews();
+  }, [ratingFilter]);
+
+  const fetchServiceReviews = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch from service_reviews table
+      let query = supabase
+        .from('service_reviews')
+        .select(`
+          *,
+          services (
+            id,
+            name,
+            description,
+            price,
+            duration
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ratingFilter !== 'all') {
+        query = query.eq('rating', parseInt(ratingFilter));
       }
+
+      if (search) {
+        query = query.or(`
+          comment.ilike.%${search}%,
+          user_name.ilike.%${search}%,
+          user_email.ilike.%${search}%,
+          services.name.ilike.%${search}%
+        `);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching service reviews:', error);
+        // Try without joins
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('service_reviews')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (simpleError) throw simpleError;
+        setReviews(simpleData || []);
+      } else {
+        setReviews(data || []);
+      }
+
     } catch (error) {
-      console.error('Error updating order status:', error);
-      alert('Error updating order status: ' + error.message);
+      console.error('Error fetching service reviews:', error);
+      alert('Error loading service reviews: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const deleteOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to delete this order?')) return;
+  const deleteServiceReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) return;
     
     try {
       const { error } = await supabase
-        .from('orders')
+        .from('service_reviews')
         .delete()
-        .eq('id', orderId);
+        .eq('id', reviewId);
 
       if (error) throw error;
       
-      // Refresh orders after delete
-      if (fetchOrders) {
-        fetchOrders();
-      }
+      setReviews(prev => prev.filter(review => review.id !== reviewId));
+      alert('Service review deleted successfully!');
     } catch (error) {
-      console.error('Error deleting order:', error);
-      alert('Error deleting order: ' + error.message);
+      console.error('Error deleting service review:', error);
+      alert('Error deleting service review: ' + error.message);
     }
   };
 
-  // Calculate statistics
-  const stats = {
-    total: orders.length,
-    pending: orders.filter(o => o.status === 'pending').length,
-    confirmed: orders.filter(o => o.status === 'confirmed').length,
-    in_progress: orders.filter(o => o.status === 'in_progress').length,
-    completed: orders.filter(o => o.status === 'completed').length,
-    cancelled: orders.filter(o => o.status === 'cancelled').length,
-    walkIn: orders.filter(o => !o.user_id).length,
-    mobile: orders.filter(o => o.user_id).length,
-    totalItems: orders.reduce((sum, order) => sum + (order.total_items || 0), 0)
+  const getServiceReviewStats = () => {
+    const total = reviews.length;
+    const averageRating = total > 0 
+      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / total 
+      : 0;
+    
+    // Rating distribution
+    const ratingDistribution = {
+      5: reviews.filter(r => r.rating === 5).length,
+      4: reviews.filter(r => r.rating === 4).length,
+      3: reviews.filter(r => r.rating === 3).length,
+      2: reviews.filter(r => r.rating === 2).length,
+      1: reviews.filter(r => r.rating === 1).length
+    };
+    
+    // Verified service reviews
+    const verifiedReviews = reviews.filter(r => r.is_verified_service).length;
+    
+    return { total, averageRating, ratingDistribution, verifiedReviews };
   };
 
-  const filteredOrders = getFilteredOrders();
+  const stats = getServiceReviewStats();
+
+  const renderServiceReviewDetails = (review) => {
+    const userName = review.user_name || 'Anonymous';
+    const userEmail = review.user_email || 'N/A';
+    const serviceName = review.services?.name || `Service #${review.service_id}`;
+    const isVerified = review.is_verified_service ? '✅ Verified Service' : '';
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '30px',
+          maxWidth: '600px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
+              Service Review Details
+            </h3>
+            <button
+              onClick={() => setShowDetails(false)}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          {/* Review Header */}
+          <div style={{
+            backgroundColor: '#f9fafb',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                Service
+              </div>
+              <div style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>
+                {serviceName}
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Reviewer
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {userName}
+                </div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                  {userEmail}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Rating
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <StarRating rating={review.rating} />
+                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                    {review.rating}/5
+                  </span>
+                </div>
+                {isVerified && (
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#10b981',
+                    marginTop: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    {isVerified}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Date & Time
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {new Date(review.created_at).toLocaleDateString()} at {new Date(review.created_at).toLocaleTimeString()}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Helpful Votes
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <FaThumbsUp size={16} />
+                  {review.helpful_count || 0}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Comment */}
+          {review.comment && (
+            <div style={{ marginBottom: '24px' }}>
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
+                Review Comment
+              </h4>
+              <div style={{
+                backgroundColor: '#f9fafb',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: '#4b5563', 
+                  lineHeight: '1.6',
+                  margin: 0,
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {review.comment}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => {
+                deleteServiceReview(review.id);
+                setShowDetails(false);
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaTrash />
+              Delete Review
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f9fafb',
-      padding: '24px'
-    }}>
+    <div>
       {/* Header */}
       <div style={{
         display: 'flex',
@@ -930,26 +4054,25 @@ const OrdersScreen = ({ orders, fetchOrders }) => {
         marginBottom: '24px'
       }}>
         <div>
-          <h1 style={{
+          <h2 style={{
             fontSize: '24px',
             fontWeight: '700',
             color: '#111827',
             margin: '0 0 4px 0'
           }}>
-            Order Management
-          </h1>
+            Service Reviews
+          </h2>
           <p style={{
             fontSize: '14px',
             color: '#6b7280',
             margin: 0
           }}>
-            Manage and track customer orders
+            View and manage service reviews
           </p>
         </div>
         
         <button
-          onClick={fetchOrders}
-          disabled={refreshing}
+          onClick={fetchServiceReviews}
           style={{
             padding: '10px 16px',
             backgroundColor: '#3b82f6',
@@ -961,49 +4084,47 @@ const OrdersScreen = ({ orders, fetchOrders }) => {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            transition: 'background-color 0.2s ease',
-            opacity: refreshing ? 0.7 : 1
+            gap: '8px'
           }}
         >
-          <FaSync style={refreshing ? { animation: 'spin 1s linear infinite' } : {}} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
+          <FaSync />
+          Refresh
         </button>
       </div>
 
-      {/* Stats Grid */}
+      {/* Review Stats */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '16px',
         marginBottom: '24px'
       }}>
         <StatCard
-          icon={FaShoppingBag}
-          title="Total Orders"
+          icon={FaComment}
+          title="Service Reviews"
           value={stats.total}
           color="#3b82f6"
           bgColor="#eff6ff"
         />
         <StatCard
-          icon={FaShoppingCart}
-          title="Total Items"
-          value={stats.totalItems}
-          color="#10b981"
-          bgColor="#f0fdf4"
-        />
-        <StatCard
-          icon={FaClock}
-          title="Pending"
-          value={stats.pending}
-          color="#f59e0b"
+          icon={FaStar}
+          title="Avg. Rating"
+          value={stats.averageRating.toFixed(1)}
+          color="#F59E0B"
           bgColor="#fffbeb"
         />
         <StatCard
-          icon={FaCheckCircle}
-          title="Completed"
-          value={stats.completed}
-          color="#059669"
+          icon={FaTools}
+          title="Services Reviewed"
+          value={new Set(reviews.map(r => r.service_id)).size}
+          color="#EC4899"
+          bgColor="#fce7f3"
+        />
+        <StatCard
+          icon={FaShieldAlt}
+          title="Verified Reviews"
+          value={stats.verifiedReviews}
+          color="#10B981"
           bgColor="#d1fae5"
         />
       </div>
@@ -1030,7 +4151,7 @@ const OrdersScreen = ({ orders, fetchOrders }) => {
               color: '#374151',
               marginBottom: '8px'
             }}>
-              Search Orders
+              Search Service Reviews
             </label>
             <div style={{
               position: 'relative',
@@ -1044,23 +4165,893 @@ const OrdersScreen = ({ orders, fetchOrders }) => {
               }} />
               <input
                 type="text"
-                placeholder="Search by customer, product, or order ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by service name, reviewer name, email, or comment..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && fetchServiceReviews()}
                 style={{
                   width: '100%',
                   padding: '10px 12px 10px 36px',
                   border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   fontSize: '14px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s ease'
+                  outline: 'none'
                 }}
               />
             </div>
           </div>
           
-          <div style={{ minWidth: '200px' }}>
+          <div style={{ minWidth: '180px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Rating Filter
+            </label>
+            <select
+              value={ratingFilter}
+              onChange={(e) => setRatingFilter(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: 'white',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="all">All Ratings</option>
+              <option value="5">5 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="2">2 Stars</option>
+              <option value="1">1 Star</option>
+            </select>
+          </div>
+          
+          <button
+            onClick={() => {
+              setSearch('');
+              setRatingFilter('all');
+              fetchServiceReviews();
+            }}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#f3f4f6',
+              color: '#374151',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaFilter />
+            Clear Filters
+          </button>
+        </div>
+      </div>
+
+      {/* Reviews List */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+      }}>
+        {loading ? (
+          <div style={{ 
+            padding: '48px 16px', 
+            textAlign: 'center' 
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid #e5e7eb',
+              borderTop: '4px solid #3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px auto'
+            }} />
+            <p style={{ color: '#6b7280' }}>Loading service reviews...</p>
+          </div>
+        ) : reviews.length === 0 ? (
+          <div style={{ 
+            padding: '48px 16px', 
+            textAlign: 'center' 
+          }}>
+            <FaTools size={48} color="#d1d5db" />
+            <h3 style={{ 
+              margin: '16px 0 8px 0', 
+              color: '#111827', 
+              fontSize: '18px' 
+            }}>
+              No Service Reviews Found
+            </h3>
+            <p style={{ 
+              color: '#6b7280', 
+              fontSize: '14px',
+              margin: 0 
+            }}>
+              {search ? 'No service reviews match your search criteria' : 'No service reviews available yet'}
+            </p>
+          </div>
+        ) : (
+          reviews.map((review) => {
+            const userName = review.user_name || 'Anonymous';
+            const userEmail = review.user_email || '';
+            const serviceName = review.services?.name || `Service #${review.service_id}`;
+            const isVerified = review.is_verified_service;
+            
+            return (
+              <div key={review.id} style={{
+                padding: '20px',
+                borderBottom: '1px solid #e5e7eb',
+                transition: 'background-color 0.2s ease',
+                ':hover': {
+                  backgroundColor: '#f9fafb'
+                }
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '20px'
+                }}>
+                  {/* Review Content */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <FaTools size={16} color="#6b7280" />
+                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                          {serviceName}
+                        </span>
+                      </div>
+                      {isVerified && (
+                        <span style={{
+                          fontSize: '11px',
+                          backgroundColor: '#d1fae5',
+                          color: '#065f46',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          fontWeight: '600'
+                        }}>
+                          ✓ Verified Service
+                        </span>
+                      )}
+                      <span style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        marginLeft: 'auto'
+                      }}>
+                        {new Date(review.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    
+                    {/* Reviewer & Rating */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <FaUserCircle size={14} color="#6b7280" />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>
+                          {userName}
+                        </span>
+                        {userEmail && (
+                          <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                            ({userEmail})
+                          </span>
+                        )}
+                      </div>
+                      <StarRating rating={review.rating} size={14} />
+                      {review.helpful_count > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          marginLeft: '8px'
+                        }}>
+                          <FaThumbsUp size={10} />
+                          {review.helpful_count}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Comment Preview */}
+                    {review.comment && (
+                      <p style={{
+                        fontSize: '14px',
+                        color: '#4b5563',
+                        lineHeight: '1.5',
+                        margin: '12px 0',
+                        backgroundColor: '#f9fafb',
+                        padding: '12px',
+                        borderRadius: '6px'
+                      }}>
+                        {review.comment.length > 200 ? `${review.comment.substring(0, 200)}...` : review.comment}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Actions */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    minWidth: '140px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        setSelectedReview(review);
+                        setShowDetails(true);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#f3f4f6',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <FaEye size={12} />
+                      View Details
+                    </button>
+                    
+                    <button
+                      onClick={() => deleteServiceReview(review.id)}
+                      style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <FaTrash size={12} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Review Details Modal */}
+      {showDetails && selectedReview && renderServiceReviewDetails(selectedReview)}
+    </div>
+  );
+};
+
+// ====================
+// PRODUCT REVIEWS TAB COMPONENT
+// ====================
+
+const ProductReviewsTab = () => {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [ratingFilter, setRatingFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [selectedReview, setSelectedReview] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    fetchProductReviews();
+  }, [ratingFilter, statusFilter]);
+
+  const fetchProductReviews = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch from 'reviews' table (for products)
+      let query = supabase
+        .from('reviews')
+        .select(`
+          *,
+          products (
+            id,
+            name,
+            price,
+            image_url,
+            category
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ratingFilter !== 'all') {
+        query = query.eq('rating', parseInt(ratingFilter));
+      }
+
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      if (search) {
+        query = query.or(`
+          comment.ilike.%${search}%,
+          user_name.ilike.%${search}%,
+          user_email.ilike.%${search}%,
+          products.name.ilike.%${search}%
+        `);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching product reviews:', error);
+        // Try without joins
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('reviews')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (simpleError) throw simpleError;
+        setReviews(simpleData || []);
+      } else {
+        setReviews(data || []);
+      }
+
+    } catch (error) {
+      console.error('Error fetching product reviews:', error);
+      alert('Error loading product reviews: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateReviewStatus = async (reviewId, status) => {
+    try {
+      const { error } = await supabase
+        .from('reviews')
+        .update({ 
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reviewId);
+
+      if (error) throw error;
+      
+      setReviews(prev => prev.map(review => 
+        review.id === reviewId ? { ...review, status } : review
+      ));
+      
+      // Update selected review if it's the current one
+      if (selectedReview?.id === reviewId) {
+        setSelectedReview(prev => ({ ...prev, status }));
+      }
+      
+      alert(`Review ${status} successfully!`);
+    } catch (error) {
+      console.error('Error updating review status:', error);
+      alert('Error updating review status: ' + error.message);
+    }
+  };
+
+  const deleteProductReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('reviews')
+        .delete()
+        .eq('id', reviewId);
+
+      if (error) throw error;
+      
+      setReviews(prev => prev.filter(review => review.id !== reviewId));
+      if (selectedReview?.id === reviewId) {
+        setShowDetails(false);
+        setSelectedReview(null);
+      }
+      alert('Product review deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting product review:', error);
+      alert('Error deleting product review: ' + error.message);
+    }
+  };
+
+  const getProductReviewStats = () => {
+    const total = reviews.length;
+    const pending = reviews.filter(r => r.status === 'pending').length;
+    const approved = reviews.filter(r => r.status === 'approved').length;
+    const rejected = reviews.filter(r => r.status === 'rejected').length;
+    
+    const averageRating = total > 0 
+      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / total 
+      : 0;
+    
+    // Rating distribution
+    const ratingDistribution = {
+      5: reviews.filter(r => r.rating === 5).length,
+      4: reviews.filter(r => r.rating === 4).length,
+      3: reviews.filter(r => r.rating === 3).length,
+      2: reviews.filter(r => r.rating === 2).length,
+      1: reviews.filter(r => r.rating === 1).length
+    };
+    
+    return { total, pending, approved, rejected, averageRating, ratingDistribution };
+  };
+
+  const stats = getProductReviewStats();
+
+  const renderProductReviewDetails = (review) => {
+    const userName = review.user_name || 'Anonymous';
+    const userEmail = review.user_email || 'N/A';
+    const productName = review.products?.name || `Product #${review.product_id}`;
+    const productPrice = review.products?.price ? `₱${review.products.price.toLocaleString()}` : 'N/A';
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '30px',
+          maxWidth: '600px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
+              Product Review Details
+            </h3>
+            <button
+              onClick={() => setShowDetails(false)}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          {/* Review Header */}
+          <div style={{
+            backgroundColor: '#f9fafb',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                Product
+              </div>
+              <div style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>
+                {productName}
+              </div>
+              {productPrice !== 'N/A' && (
+                <div style={{ fontSize: '14px', color: '#10b981', marginTop: '2px' }}>
+                  {productPrice}
+                </div>
+              )}
+            </div>
+            
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Reviewer
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {userName}
+                </div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                  {userEmail}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Rating
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <StarRating rating={review.rating} />
+                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                    {review.rating}/5
+                  </span>
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Status
+                </div>
+                <ReviewStatusBadge status={review.status} />
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
+                  Date & Time
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {new Date(review.created_at).toLocaleDateString()} at {new Date(review.created_at).toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Comment */}
+          {review.comment && (
+            <div style={{ marginBottom: '24px' }}>
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
+                Review Comment
+              </h4>
+              <div style={{
+                backgroundColor: '#f9fafb',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: '#4b5563', 
+                  lineHeight: '1.6',
+                  margin: 0,
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {review.comment}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            {review.status === 'pending' && (
+              <>
+                <button
+                  onClick={() => {
+                    updateReviewStatus(review.id, 'approved');
+                    setShowDetails(false);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <FaThumbsUp />
+                  Approve
+                </button>
+                
+                <button
+                  onClick={() => {
+                    updateReviewStatus(review.id, 'rejected');
+                    setShowDetails(false);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#fef2f2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <FaThumbsDown />
+                  Reject
+                </button>
+              </>
+            )}
+            
+            <button
+              onClick={() => {
+                deleteProductReview(review.id);
+                setShowDetails(false);
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaTrash />
+              Delete Review
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px'
+      }}>
+        <div>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#111827',
+            margin: '0 0 4px 0'
+          }}>
+            Product Reviews
+          </h2>
+          <p style={{
+            fontSize: '14px',
+            color: '#6b7280',
+            margin: 0
+          }}>
+            Moderate and manage product reviews
+          </p>
+        </div>
+        
+        <button
+          onClick={fetchProductReviews}
+          style={{
+            padding: '10px 16px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <FaSync />
+          Refresh
+        </button>
+      </div>
+
+      {/* Review Stats */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        <StatCard
+          icon={FaStar}
+          title="Total Reviews"
+          value={stats.total}
+          color="#8B5CF6"
+          bgColor="#f5f3ff"
+        />
+        <StatCard
+          icon={FaClock}
+          title="Pending"
+          value={stats.pending}
+          color="#F59E0B"
+          bgColor="#fffbeb"
+        />
+        <StatCard
+          icon={FaThumbsUp}
+          title="Approved"
+          value={stats.approved}
+          color="#10B981"
+          bgColor="#d1fae5"
+        />
+        <StatCard
+          icon={FaThumbsDown}
+          title="Rejected"
+          value={stats.rejected}
+          color="#EF4444"
+          bgColor="#fee2e2"
+        />
+      </div>
+
+      {/* Rating Distribution */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+      }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+          Rating Distribution
+        </h3>
+        <div style={{ display: 'grid', gap: '12px' }}>
+          {[5, 4, 3, 2, 1].map(rating => (
+            <div key={rating} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '60px' }}>
+                <FaStar color="#F59E0B" />
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                  {rating}
+                </span>
+              </div>
+              <div style={{ flex: 1, height: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
+                <div 
+                  style={{ 
+                    height: '100%', 
+                    backgroundColor: '#F59E0B',
+                    width: `${stats.total > 0 ? (stats.ratingDistribution[rating] / stats.total) * 100 : 0}%`
+                  }} 
+                />
+              </div>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#6b7280', width: '40px' }}>
+                {stats.ratingDistribution[rating]}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{
+          display: 'flex',
+          gap: '16px',
+          alignItems: 'flex-end',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ flex: 1, minWidth: '300px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Search Reviews
+            </label>
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <FaSearch style={{
+                position: 'absolute',
+                left: '12px',
+                color: '#9ca3af'
+              }} />
+              <input
+                type="text"
+                placeholder="Search by product name, reviewer name, email, or comment..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && fetchProductReviews()}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px 10px 36px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+          </div>
+          
+          <div style={{ minWidth: '180px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Rating Filter
+            </label>
+            <select
+              value={ratingFilter}
+              onChange={(e) => setRatingFilter(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: 'white',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="all">All Ratings</option>
+              <option value="5">5 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="2">2 Stars</option>
+              <option value="1">1 Star</option>
+            </select>
+          </div>
+          
+          <div style={{ minWidth: '180px' }}>
             <label style={{
               display: 'block',
               fontSize: '14px',
@@ -1086,17 +5077,17 @@ const OrdersScreen = ({ orders, fetchOrders }) => {
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
           
           <button
             onClick={() => {
-              setSearchTerm('');
+              setSearch('');
+              setRatingFilter('all');
               setStatusFilter('all');
+              fetchProductReviews();
             }}
             style={{
               padding: '10px 16px',
@@ -1109,8 +5100,7 @@ const OrdersScreen = ({ orders, fetchOrders }) => {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s ease'
+              gap: '8px'
             }}
           >
             <FaFilter />
@@ -1119,1361 +5109,480 @@ const OrdersScreen = ({ orders, fetchOrders }) => {
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Reviews List */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
         overflow: 'hidden',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
-        <div style={{
-          padding: '20px',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: '#111827',
-            margin: 0
+        {loading ? (
+          <div style={{ 
+            padding: '48px 16px', 
+            textAlign: 'center' 
           }}>
-            Recent Orders
-          </h2>
-          <div style={{
-            fontSize: '14px',
-            color: '#6b7280'
-          }}>
-            Showing {filteredOrders.length} of {orders.length} orders
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid #e5e7eb',
+              borderTop: '4px solid #3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px auto'
+            }} />
+            <p style={{ color: '#6b7280' }}>Loading product reviews...</p>
           </div>
-        </div>
-        
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            minWidth: '1200px'
+        ) : reviews.length === 0 ? (
+          <div style={{ 
+            padding: '48px 16px', 
+            textAlign: 'center' 
           }}>
-            <thead>
-              <tr style={{
-                backgroundColor: '#f9fafb',
-                borderBottom: '1px solid #e5e7eb'
+            <FaStar size={48} color="#d1d5db" />
+            <h3 style={{ 
+              margin: '16px 0 8px 0', 
+              color: '#111827', 
+              fontSize: '18px' 
+            }}>
+              No Product Reviews Found
+            </h3>
+            <p style={{ 
+              color: '#6b7280', 
+              fontSize: '14px',
+              margin: 0 
+            }}>
+              {search ? 'No reviews match your search criteria' : 'No product reviews available yet'}
+            </p>
+          </div>
+        ) : (
+          reviews.map((review) => {
+            const userName = review.user_name || 'Anonymous';
+            const userEmail = review.user_email || '';
+            const productName = review.products?.name || `Product #${review.product_id}`;
+            const productImage = review.products?.image_url;
+            
+            return (
+              <div key={review.id} style={{
+                padding: '20px',
+                borderBottom: '1px solid #e5e7eb',
+                transition: 'background-color 0.2s ease',
+                ':hover': {
+                  backgroundColor: '#f9fafb'
+                }
               }}>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'left',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '20px'
                 }}>
-                  Order ID
-                </th>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'left',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  Customer
-                </th>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'left',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  Products
-                </th>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'left',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  Amount
-                </th>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'left',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  Date & Time
-                </th>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'left',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  Status
-                </th>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'right',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan="7" style={{ 
-                    padding: '48px 16px', 
-                    textAlign: 'center' 
-                  }}>
-                    <FaShoppingBag size={48} color="#d1d5db" />
-                    <h3 style={{ 
-                      margin: '16px 0 8px 0', 
-                      color: '#111827', 
-                      fontSize: '18px' 
+                  {/* Review Content */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '12px'
                     }}>
-                      No Orders Found
-                    </h3>
-                    <p style={{ 
-                      color: '#6b7280', 
-                      fontSize: '14px',
-                      margin: 0 
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <FaShoppingBag size={16} color="#6b7280" />
+                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                          {productName}
+                        </span>
+                      </div>
+                      <ReviewStatusBadge status={review.status} />
+                      <span style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        marginLeft: 'auto'
+                      }}>
+                        {new Date(review.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    
+                    {/* Reviewer & Rating */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '12px'
                     }}>
-                      No orders match your search criteria
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredOrders.map(order => (
-                  <OrderRowWithProducts
-                    key={order.id}
-                    order={order}
-                    onView={(order) => {
-                      setSelectedOrder(order);
-                      setShowDetails(true);
-                    }}
-                    onUpdateStatus={updateOrderStatus}
-                    onDelete={deleteOrder}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Order Details Modal */}
-      {showDetails && selectedOrder && (
-        <OrderDetailsModal
-          order={selectedOrder}
-          onClose={() => setShowDetails(false)}
-        />
-      )}
-    </div>
-  );
-};
-
-// ====================
-// DASHBOARD SCREEN COMPONENT
-// ====================
-const DashboardScreen = ({ orders = [] }) => {
-  const [dashboardData, setDashboardData] = useState({
-    totalRevenue: 0,
-    totalOrders: 0,
-    totalCustomers: 0,
-    averageOrderValue: 0,
-    pendingOrders: 0,
-    completedOrders: 0,
-    conversionRate: 0,
-    monthlyRevenue: [],
-    topServices: [],
-    recentOrders: [],
-    todayOrders: 0,
-    todayRevenue: 0,
-    totalWalkInCustomers: 0,
-    totalMobileCustomers: 0
-  });
-  
-  const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('month');
-  const [customers, setCustomers] = useState([]);
-  const [services, setServices] = useState([]);
-
-  // Calculate monthly revenue without circular dependency
-  const calculateMonthlyRevenue = (ordersData) => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = new Date().getMonth();
-    
-    // Initialize monthly data
-    const monthlyData = months.slice(0, currentMonth + 1).map((month, index) => ({
-      month,
-      revenue: 0,
-      growth: 0
-    }));
-    
-    // Calculate revenue for each month
-    ordersData.forEach(order => {
-      if (!order.created_at) return;
-      
-      const orderDate = new Date(order.created_at);
-      const monthIndex = orderDate.getMonth();
-      const orderYear = orderDate.getFullYear();
-      const currentYear = new Date().getFullYear();
-      
-      // Only count orders from current year
-      if (orderYear === currentYear && monthIndex <= currentMonth) {
-        monthlyData[monthIndex].revenue += (order.total_amount || order.total || 0);
-      }
-    });
-    
-    // Calculate growth rates
-    monthlyData.forEach((monthData, index) => {
-      if (index > 0) {
-        const prevMonthRevenue = monthlyData[index - 1].revenue;
-        if (prevMonthRevenue > 0) {
-          monthData.growth = ((monthData.revenue / prevMonthRevenue) - 1) * 100;
-        }
-      }
-    });
-    
-    return monthlyData;
-  };
-
-  // Calculate growth percentage compared to previous period
-  const calculateGrowth = (currentData, previousData) => {
-    if (!previousData || previousData === 0) return 0;
-    return ((currentData - previousData) / previousData) * 100;
-  };
-
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      // Calculate date range
-      let dateFilter = new Date();
-      let previousDateFilter = new Date();
-      
-      switch(timeRange) {
-        case 'today':
-          dateFilter.setHours(0, 0, 0, 0);
-          previousDateFilter.setDate(previousDateFilter.getDate() - 1);
-          previousDateFilter.setHours(0, 0, 0, 0);
-          break;
-        case 'week':
-          dateFilter.setDate(dateFilter.getDate() - 7);
-          previousDateFilter.setDate(previousDateFilter.getDate() - 14);
-          break;
-        case 'month':
-          dateFilter.setMonth(dateFilter.getMonth() - 1);
-          previousDateFilter.setMonth(previousDateFilter.getMonth() - 2);
-          break;
-        case 'quarter':
-          dateFilter.setMonth(dateFilter.getMonth() - 3);
-          previousDateFilter.setMonth(previousDateFilter.getMonth() - 6);
-          break;
-        case 'year':
-          dateFilter.setFullYear(dateFilter.getFullYear() - 1);
-          previousDateFilter.setFullYear(previousDateFilter.getFullYear() - 2);
-          break;
-      }
-
-      // Fetch customers
-      const { data: customersData, error: customersError } = await supabase
-        .from('users')
-        .select('id, created_at, full_name, email')
-        .order('created_at', { ascending: false });
-
-      if (customersError) throw customersError;
-
-      // Fetch services
-      const { data: servicesData, error: servicesError } = await supabase
-        .from('services')
-        .select('*')
-        .order('name');
-
-      if (servicesError) throw servicesError;
-      setServices(servicesData || []);
-
-      setCustomers(customersData || []);
-
-      // Filter orders by time range
-      const filteredOrders = orders.filter(order => 
-        new Date(order.created_at) >= dateFilter
-      );
-
-      // Filter customers by time range
-      const filteredCustomers = customersData?.filter(customer => 
-        new Date(customer.created_at) >= dateFilter
-      ) || [];
-
-      // Filter orders for previous period for comparison
-      const previousPeriodOrders = orders.filter(order => 
-        new Date(order.created_at) >= previousDateFilter && 
-        new Date(order.created_at) < dateFilter
-      );
-
-      // Filter customers for previous period
-      const previousPeriodCustomers = customersData?.filter(customer => 
-        new Date(customer.created_at) >= previousDateFilter && 
-        new Date(customer.created_at) < dateFilter
-      ) || [];
-
-      // Calculate metrics for current period
-      const totalRevenue = filteredOrders.reduce((sum, order) => 
-        sum + (order.total || 0), 0);
-
-      const totalOrders = filteredOrders.length;
-      const totalCustomers = filteredCustomers.length;
-      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-      const pendingOrders = filteredOrders.filter(order => order.status === 'pending').length;
-      const completedOrders = filteredOrders.filter(order => order.status === 'completed').length;
-      const walkInCustomers = filteredOrders.filter(order => !order.user_id).length;
-      const mobileCustomers = filteredOrders.filter(order => order.user_id).length;
-
-      // Calculate metrics for previous period
-      const previousTotalRevenue = previousPeriodOrders.reduce((sum, order) => 
-        sum + (order.total || 0), 0);
-      const previousTotalOrders = previousPeriodOrders.length;
-      const previousTotalCustomers = previousPeriodCustomers.length;
-      const previousAverageOrderValue = previousTotalOrders > 0 ? previousTotalRevenue / previousTotalOrders : 0;
-      const previousPendingOrders = previousPeriodOrders.filter(order => order.status === 'pending').length;
-      const previousCompletedOrders = previousPeriodOrders.filter(order => order.status === 'completed').length;
-
-      // Calculate growth percentages
-      const revenueGrowth = calculateGrowth(totalRevenue, previousTotalRevenue);
-      const ordersGrowth = calculateGrowth(totalOrders, previousTotalOrders);
-      const customersGrowth = calculateGrowth(totalCustomers, previousTotalCustomers);
-      const avgOrderValueGrowth = calculateGrowth(averageOrderValue, previousAverageOrderValue);
-      const pendingOrdersGrowth = calculateGrowth(pendingOrders, previousPendingOrders);
-      const completedOrdersGrowth = calculateGrowth(completedOrders, previousCompletedOrders);
-
-      // Calculate today's metrics
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const todayOrdersData = filteredOrders.filter(order => 
-        new Date(order.created_at) >= todayStart
-      );
-      const todayOrders = todayOrdersData.length;
-      const todayRevenue = todayOrdersData.reduce((sum, order) => sum + (order.total || 0), 0);
-
-      // Calculate conversion rate
-      const conversionRate = totalCustomers > 0 ? (totalOrders / totalCustomers) * 100 : 0;
-
-      // Calculate monthly revenue
-      const monthlyRevenue = calculateMonthlyRevenue(orders);
-      
-      // Calculate top services from orders
-      const serviceRevenue = {};
-      filteredOrders.forEach(order => {
-        // If order has service_id directly
-        if (order.service_id) {
-          const service = servicesData?.find(s => s.id === order.service_id);
-          if (service) {
-            const serviceName = service.name || `Service #${order.service_id}`;
-            if (!serviceRevenue[serviceName]) {
-              serviceRevenue[serviceName] = { revenue: 0, orders: 0 };
-            }
-            serviceRevenue[serviceName].revenue += (order.total || 0);
-            serviceRevenue[serviceName].orders += 1;
-          }
-        }
-      });
-
-      const topServices = Object.entries(serviceRevenue)
-        .map(([name, data]) => ({
-          name,
-          revenue: data.revenue,
-          orders: data.orders
-        }))
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 4);
-
-      // Get recent orders (5 most recent from all orders)
-      const recentOrders = orders.slice(0, 5).map(order => ({
-        ...order,
-        customer_name: order.customer_name || 'Walk-in Customer',
-        customer_phone: order.customer_phone || 'N/A',
-        channel: order.channel || 'walk-in',
-        total: order.total || 0
-      }));
-
-      setDashboardData({
-        totalRevenue,
-        totalOrders,
-        totalCustomers,
-        averageOrderValue,
-        pendingOrders,
-        completedOrders,
-        conversionRate,
-        monthlyRevenue,
-        topServices,
-        recentOrders,
-        todayOrders,
-        todayRevenue,
-        totalWalkInCustomers: walkInCustomers,
-        totalMobileCustomers: mobileCustomers,
-        growthPercentages: {
-          revenue: revenueGrowth,
-          orders: ordersGrowth,
-          customers: customersGrowth,
-          averageOrderValue: avgOrderValueGrowth,
-          pendingOrders: pendingOrdersGrowth,
-          completedOrders: completedOrdersGrowth
-        }
-      });
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [timeRange, orders]);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
-
-  const refreshDashboard = () => {
-    fetchDashboardData();
-  };
-
-  // Format growth percentage for display
-  const formatGrowth = (growth) => {
-    if (growth === 0) return { value: '0%', isPositive: true, color: '#6b7280' };
-    const isPositive = growth > 0;
-    const value = `${isPositive ? '+' : ''}${growth.toFixed(1)}%`;
-    const color = isPositive ? '#10b981' : '#ef4444';
-    return { value, isPositive, color };
-  };
-
-  if (loading) {
-    return (
-      <div style={styles.loadingContainer}>
-        <div className="spinner" />
-        <p style={styles.loadingText}>Loading dashboard data...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.dashboard}>
-      {/* Header with Refresh */}
-      <div style={styles.dashboardHeader}>
-        <h2 style={styles.dashboardTitle}>Sales Overview</h2>
-        <div style={styles.headerControls}>
-          <div style={styles.timeRangeSelector}>
-            {['today', 'week', 'month', 'quarter', 'year'].map(range => (
-              <button
-                key={range}
-                style={{
-                  ...styles.timeRangeButton,
-                  background: timeRange === range ? '#0077b6' : '#f8fafc',
-                  color: timeRange === range ? '#ffffff' : '#374151'
-                }}
-                onClick={() => setTimeRange(range)}
-              >
-                {range.charAt(0).toUpperCase() + range.slice(1)}
-              </button>
-            ))}
-          </div>
-          <button style={styles.refreshButton} onClick={refreshDashboard}>
-            <FaSync /> Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Today's Stats */}
-      <div style={styles.todayStats}>
-        <div style={styles.todayStatCard}>
-          <div style={styles.todayStatIcon}>
-            <FaShoppingCart size={24} color="#0077b6" />
-          </div>
-          <div>
-            <div style={styles.todayStatLabel}>Today's Orders</div>
-            <div style={styles.todayStatValue}>{dashboardData.todayOrders}</div>
-          </div>
-        </div>
-        <div style={styles.todayStatCard}>
-          <div style={styles.todayStatIcon}>
-            <FaDollarSign size={24} color="#10b981" />
-          </div>
-          <div>
-            <div style={styles.todayStatLabel}>Today's Revenue</div>
-            <div style={styles.todayStatValue}>₱{dashboardData.todayRevenue.toLocaleString()}</div>
-          </div>
-        </div>
-        <div style={styles.todayStatCard}>
-          <div style={styles.todayStatIcon}>
-            <FaStore size={24} color="#f59e0b" />
-          </div>
-          <div>
-            <div style={styles.todayStatLabel}>Walk-in Customers</div>
-            <div style={styles.todayStatValue}>{dashboardData.totalWalkInCustomers}</div>
-          </div>
-        </div>
-        <div style={styles.todayStatCard}>
-          <div style={styles.todayStatIcon}>
-            <FaMobileAlt size={24} color="#8b5cf6" />
-          </div>
-          <div>
-            <div style={styles.todayStatLabel}>Mobile Customers</div>
-            <div style={styles.todayStatValue}>{dashboardData.totalMobileCustomers}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div style={styles.kpiGrid}>
-        {[
-          {
-            title: 'Total Revenue',
-            value: `₱${dashboardData.totalRevenue.toLocaleString()}`,
-            growth: dashboardData.growthPercentages?.revenue || 0,
-            icon: <FaDollarSign />,
-            color: '#065f46',
-            bgColor: '#d1fae5'
-          },
-          {
-            title: 'Total Orders',
-            value: dashboardData.totalOrders,
-            growth: dashboardData.growthPercentages?.orders || 0,
-            icon: <FaShoppingCart />,
-            color: '#1d4ed8',
-            bgColor: '#dbeafe'
-          },
-          {
-            title: 'Total Customers',
-            value: dashboardData.totalCustomers,
-            growth: dashboardData.growthPercentages?.customers || 0,
-            icon: <FaUsers />,
-            color: '#92400e',
-            bgColor: '#fef3c7'
-          },
-          {
-            title: 'Avg Order Value',
-            value: `₱${dashboardData.averageOrderValue.toFixed(2)}`,
-            growth: dashboardData.growthPercentages?.averageOrderValue || 0,
-            icon: <FaChartLine />,
-            color: '#be185d',
-            bgColor: '#fce7f3'
-          },
-          {
-            title: 'Pending Orders',
-            value: dashboardData.pendingOrders,
-            growth: dashboardData.growthPercentages?.pendingOrders || 0,
-            icon: <FaClock />,
-            color: '#991b1b',
-            bgColor: '#fee2e2'
-          },
-          {
-            title: 'Completed Orders',
-            value: dashboardData.completedOrders,
-            growth: dashboardData.growthPercentages?.completedOrders || 0,
-            icon: <FaCheckCircle />,
-            color: '#166534',
-            bgColor: '#dcfce7'
-          }
-        ].map((kpi, index) => {
-          const growth = formatGrowth(kpi.growth);
-          return (
-            <div key={index} style={styles.kpiCard}>
-              <div style={{ ...styles.kpiIcon, background: kpi.bgColor }}>
-                {React.cloneElement(kpi.icon, { size: 24, color: kpi.color })}
-              </div>
-              <div style={styles.kpiContent}>
-                <div style={styles.kpiLabel}>{kpi.title}</div>
-                <div style={styles.kpiValue}>{kpi.value}</div>
-                <div style={styles.kpiChange}>
-                  {growth.isPositive ? (
-                    <FaArrowUp size={12} color="#10b981" />
-                  ) : growth.value === '0%' ? (
-                    <span style={{ width: '12px' }} />
-                  ) : (
-                    <FaArrowDown size={12} color="#ef4444" />
-                  )}
-                  <span style={{ 
-                    color: growth.color,
-                    marginLeft: '4px',
-                    fontSize: '13px'
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <FaUserCircle size={14} color="#6b7280" />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>
+                          {userName}
+                        </span>
+                        {userEmail && (
+                          <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                            ({userEmail})
+                          </span>
+                        )}
+                      </div>
+                      <StarRating rating={review.rating} size={14} />
+                    </div>
+                    
+                    {/* Comment Preview */}
+                    {review.comment && (
+                      <p style={{
+                        fontSize: '14px',
+                        color: '#4b5563',
+                        lineHeight: '1.5',
+                        margin: '12px 0',
+                        backgroundColor: '#f9fafb',
+                        padding: '12px',
+                        borderRadius: '6px'
+                      }}>
+                        {review.comment.length > 200 ? `${review.comment.substring(0, 200)}...` : review.comment}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Actions */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    minWidth: '140px'
                   }}>
-                    {growth.value} from last {timeRange}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Charts and Data */}
-      <div style={styles.chartsGrid}>
-        {/* Revenue Chart */}
-        <div style={styles.chartCard}>
-          <div style={styles.chartHeader}>
-            <h3 style={styles.chartTitle}>Monthly Revenue Trend</h3>
-            <div style={styles.chartTimeRange}>{timeRange.charAt(0).toUpperCase() + timeRange.slice(1)}ly</div>
-          </div>
-          <div style={styles.chartContent}>
-            <div style={styles.revenueChart}>
-              {dashboardData.monthlyRevenue.slice(-6).map((item, index) => (
-                <div key={index} style={styles.revenueBarContainer}>
-                  <div style={styles.revenueBarLabel}>{item.month}</div>
-                  <div style={styles.revenueBarWrapper}>
-                    <div 
+                    <button
+                      onClick={() => {
+                        setSelectedReview(review);
+                        setShowDetails(true);
+                      }}
                       style={{
-                        ...styles.revenueBar,
-                        height: `${Math.min(100, (item.revenue / Math.max(...dashboardData.monthlyRevenue.map(m => m.revenue))) * 100)}%`,
-                        background: item.growth > 0 
-                          ? 'linear-gradient(to top, #0077b6, #00b4d8)'
-                          : item.growth < 0
-                          ? 'linear-gradient(to top, #ef4444, #f87171)'
-                          : 'linear-gradient(to top, #6b7280, #9ca3af)'
+                        padding: '8px 12px',
+                        backgroundColor: '#f3f4f6',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
                       }}
                     >
-                      <div style={styles.revenueBarValue}>₱{item.revenue.toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <div style={styles.revenueGrowth}>
-                    {item.growth > 0 ? (
-                      <FaArrowUp size={10} color="#10b981" />
-                    ) : item.growth < 0 ? (
-                      <FaArrowDown size={10} color="#ef4444" />
-                    ) : null}
-                    <span style={{ 
-                      color: item.growth > 0 ? '#10b981' : item.growth < 0 ? '#ef4444' : '#6b7280',
-                      fontSize: '11px',
-                      marginLeft: '2px'
-                    }}>
-                      {item.growth !== 0 ? `${Math.abs(item.growth).toFixed(1)}%` : '-'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Top Services */}
-        <div style={styles.chartCard}>
-          <div style={styles.chartHeader}>
-            <h3 style={styles.chartTitle}>Top Performing Services</h3>
-            <button 
-              style={styles.viewAllButton}
-              onClick={() => console.log('View all services')}
-            >
-              View Details
-            </button>
-          </div>
-          <div style={styles.chartContent}>
-            <div style={styles.topServicesList}>
-              {dashboardData.topServices.length > 0 ? (
-                dashboardData.topServices.map((service, index) => (
-                  <div key={index} style={styles.topServiceItem}>
-                    <div style={styles.serviceRank}>{index + 1}</div>
-                    <div style={styles.serviceInfo}>
-                      <div style={styles.serviceName}>{service.name}</div>
-                      <div style={styles.serviceStats}>
-                        <span style={styles.serviceOrders}>{service.orders} orders</span>
-                      </div>
-                    </div>
-                    <div style={styles.serviceRevenue}>
-                      <div style={styles.revenueAmount}>₱{service.revenue.toLocaleString()}</div>
-                      <div style={styles.revenuePercentage}>
-                        {dashboardData.totalRevenue > 0 
-                          ? `${((service.revenue / dashboardData.totalRevenue) * 100).toFixed(1)}%`
-                          : '0%'}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={styles.noDataMessage}>
-                  No service data available for the selected period
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Orders */}
-        <div style={{ ...styles.chartCard, gridColumn: 'span 2' }}>
-          <div style={styles.chartHeader}>
-            <h3 style={styles.chartTitle}>Recent Orders</h3>
-            <button 
-              style={styles.viewAllButton}
-              onClick={() => console.log('View all orders')}
-            >
-              View All
-            </button>
-          </div>
-          <div style={styles.chartContent}>
-            <div style={styles.recentOrdersTable}>
-              <div style={styles.tableHeader}>
-                <div style={styles.tableCell}>Order #</div>
-                <div style={styles.tableCell}>Customer</div>
-                <div style={styles.tableCell}>Date</div>
-                <div style={styles.tableCell}>Amount</div>
-                <div style={styles.tableCell}>Status</div>
-                <div style={styles.tableCell}>Channel</div>
-              </div>
-              {dashboardData.recentOrders.map((order, index) => (
-                <div key={index} style={styles.tableRow}>
-                  <div style={styles.tableCell}>
-                    <span style={styles.orderId}>#{order.id?.toString().substring(0, 8) || 'N/A'}</span>
-                  </div>
-                  <div style={styles.tableCell}>
-                    <div style={styles.customerCell}>
-                      <FaUserCircle size={16} color="#6b7280" />
-                      <span>{order.customer_name || 'Walk-in Customer'}</span>
-                    </div>
-                  </div>
-                  <div style={styles.tableCell}>
-                    {order.created_at ? new Date(order.created_at).toLocaleDateString('en-PH', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }) : 'N/A'}
-                  </div>
-                  <div style={styles.tableCell}>
-                    <span style={styles.amountCell}>₱{order.total?.toLocaleString() || 0}</span>
-                  </div>
-                  <div style={styles.tableCell}>
-                    <span style={{
-                      ...styles.statusBadge,
-                      background: getStatusColor(order.status).background,
-                      color: getStatusColor(order.status).color
-                    }}>
-                      {order.status?.charAt(0).toUpperCase() + order.status?.slice(1) || 'Pending'}
-                    </span>
-                  </div>
-                  <div style={styles.tableCell}>
-                    <span style={{
-                      ...styles.channelBadge,
-                      background: order.channel === 'mobile' ? '#e0f2fe' : '#f0f9ff',
-                      color: order.channel === 'mobile' ? '#0369a1' : '#0c4a6e'
-                    }}>
-                      {order.channel === 'mobile' ? <FaMobileAlt size={12} /> : <FaStore size={12} />}
-                      {order.channel === 'mobile' ? ' Mobile' : ' In-store'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ====================
-// SERVICES SCREEN COMPONENT
-// ====================
-
-
-// ====================
-// BOOKING MANAGEMENT COMPONENT
-// ====================
-const BookingManagement = () => {
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-
-  useEffect(() => {
-    fetchBookings();
-  }, []);
-
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      
-      // Try different table names based on your Supabase setup
-      let bookingsData;
-      let bookingsError;
-      
-      // Try 'bookings' table first
-      ({ data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false }));
-      
-      // If 'bookings' doesn't exist, try 'appointments'
-      if (bookingsError && bookingsError.code === 'PGRST116') {
-        console.log('Bookings table not found, trying appointments...');
-        ({ data: bookingsData, error: bookingsError } = await supabase
-          .from('appointments')
-          .select('*')
-          .order('created_at', { ascending: false }));
-      }
-      
-      if (bookingsError) {
-        console.error('Bookings fetch error:', bookingsError);
-        // Set empty array if table doesn't exist
-        setBookings([]);
-        setLoading(false);
-        return;
-      }
-
-      const formattedBookings = (bookingsData || []).map(booking => ({
-        id: booking.id,
-        customer_name: booking.name || booking.customer_name || 'Guest',
-        customer_email: booking.email || booking.customer_email || 'No email',
-        customer_phone: booking.contact || booking.customer_phone || 'No phone',
-        service_name: booking.service || booking.service_name || 'General Service',
-        scheduled_date: booking.date || booking.scheduled_date || new Date().toISOString().split('T')[0],
-        scheduled_time: booking.time || booking.scheduled_time || '10:00',
-        status: booking.status || 'pending',
-        notes: booking.message || booking.notes || '',
-        location: booking.location || 'N/A',
-        created_at: booking.created_at || new Date().toISOString()
-      }));
-
-      setBookings(formattedBookings);
-      
-    } catch (error) {
-      console.error('Error in fetchBookings:', error);
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateBookingStatus = async (bookingId, newStatus) => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: newStatus })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-      
-      setBookings(prev => prev.map(booking => 
-        booking.id === bookingId ? { ...booking, status: newStatus } : booking
-      ));
-      
-      alert(`Booking marked as ${newStatus}`);
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-      alert('Error updating booking status: ' + error.message);
-    }
-  };
-
-  const deleteBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to delete this booking?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .delete()
-        .eq('id', bookingId);
-
-      if (error) throw error;
-      
-      setBookings(prev => prev.filter(booking => booking.id !== bookingId));
-      alert('Booking deleted successfully!');
-    } catch (error) {
-      console.error('Error deleting booking:', error);
-      alert('Error deleting booking: ' + error.message);
-    }
-  };
-
-  const getFilteredBookings = () => {
-    let filtered = [...bookings];
-
-    if (searchTerm) {
-      filtered = filtered.filter(booking =>
-        booking.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.customer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.customer_phone?.includes(searchTerm) ||
-        booking.service_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(booking => booking.status === statusFilter);
-    }
-
-    return filtered;
-  };
-
-  const stats = {
-    total: bookings.length,
-    pending: bookings.filter(b => b.status === 'pending').length,
-    confirmed: bookings.filter(b => b.status === 'confirmed').length,
-    completed: bookings.filter(b => b.status === 'completed').length,
-    cancelled: bookings.filter(b => b.status === 'cancelled').length,
-  };
-
-  if (loading) {
-    return (
-      <div style={styles.loadingContainer}>
-        <div className="spinner" />
-        <p>Loading bookings...</p>
-      </div>
-    );
-  }
-
-  const filteredBookings = getFilteredBookings();
-
-  return (
-    <div style={styles.screenContainer}>
-      <div style={styles.screenHeader}>
-        <div>
-          <h2 style={styles.screenTitle}>Booking Management</h2>
-          <p style={styles.screenSubtitle}>Manage customer appointments and schedules</p>
-        </div>
-        <div style={styles.screenActions}>
-          <button style={styles.refreshButton} onClick={fetchBookings}>
-            <FaSync /> Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div style={styles.statsGrid}>
-        <div style={styles.statCard}>
-          <div style={{ background: '#e0f2fe', padding: '16px', borderRadius: '10px' }}>
-            <FaCalendarCheck size={24} color="#0077b6" />
-          </div>
-          <div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>Total Bookings</div>
-            <div style={{ fontSize: '24px', fontWeight: '700' }}>{stats.total}</div>
-          </div>
-        </div>
-
-        <div style={styles.statCard}>
-          <div style={{ background: '#fffbeb', padding: '16px', borderRadius: '10px' }}>
-            <FaClock size={24} color="#f59e0b" />
-          </div>
-          <div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>Pending</div>
-            <div style={{ fontSize: '24px', fontWeight: '700' }}>{stats.pending}</div>
-          </div>
-        </div>
-
-        <div style={styles.statCard}>
-          <div style={{ background: '#d1fae5', padding: '16px', borderRadius: '10px' }}>
-            <FaCheckCircle size={24} color="#10b981" />
-          </div>
-          <div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>Confirmed</div>
-            <div style={{ fontSize: '24px', fontWeight: '700' }}>{stats.confirmed}</div>
-          </div>
-        </div>
-
-        <div style={styles.statCard}>
-          <div style={{ background: '#fef2f2', padding: '16px', borderRadius: '10px' }}>
-            <FaTimesCircle size={24} color="#ef4444" />
-          </div>
-          <div>
-            <div style={{ fontSize: '14px', color: '#6b7280' }}>Cancelled</div>
-            <div style={{ fontSize: '24px', fontWeight: '700' }}>{stats.cancelled}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bookings Table */}
-      <div style={styles.ordersTableContainer}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Customer</th>
-              <th style={styles.th}>Service</th>
-              <th style={styles.th}>Date & Time</th>
-              <th style={styles.th}>Contact</th>
-              <th style={styles.th}>Status</th>
-              <th style={styles.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredBookings.length === 0 ? (
-              <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                  No bookings found. {bookings.length === 0 ? 'No bookings in the system.' : 'Try a different search.'}
-                </td>
-              </tr>
-            ) : (
-              filteredBookings.map(booking => {
-                const statusColor = getStatusColor(booking.status);
-                return (
-                  <tr key={booking.id} style={styles.tr}>
-                    <td style={styles.td}>
-                      <div style={styles.customerCell}>
-                        <div style={styles.customerName}>{booking.customer_name}</div>
-                        <div style={styles.customerEmail}>{booking.customer_email}</div>
-                      </div>
-                    </td>
-                    <td style={styles.td}>
-                      <div>{booking.service_name}</div>
-                      <small style={{ color: '#6b7280' }}>{booking.location}</small>
-                    </td>
-                    <td style={styles.td}>
-                      <div>{new Date(booking.scheduled_date).toLocaleDateString()}</div>
-                      <small style={{ color: '#6b7280' }}>{booking.scheduled_time}</small>
-                    </td>
-                    <td style={styles.td}>
-                      <div>{booking.customer_phone}</div>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.statusBadge,
-                        background: statusColor.background,
-                        color: statusColor.color
-                      }}>
-                        {booking.status}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <div style={styles.actionButtons}>
-                        {booking.status === 'pending' && (
-                          <button
-                            style={styles.confirmButton}
-                            onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                            title="Confirm booking"
-                          >
-                            <FaCheckCircle />
-                          </button>
-                        )}
-
-                        {booking.status === 'confirmed' && (
-                          <button
-                            style={styles.completeButton}
-                            onClick={() => updateBookingStatus(booking.id, 'completed')}
-                            title="Mark as completed"
-                          >
-                            ✓
-                          </button>
-                        )}
-
-                        {(booking.status === 'pending' || booking.status === 'confirmed') && (
-                          <button
-                            style={styles.cancelButtonSmall}
-                            onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                            title="Cancel booking"
-                          >
-                            <FaTimesCircle />
-                          </button>
-                        )}
-
+                      <FaEye size={12} />
+                      View Details
+                    </button>
+                    
+                    {review.status === 'pending' && (
+                      <>
                         <button
-                          style={styles.deleteButton}
-                          onClick={() => deleteBooking(booking.id)}
-                          title="Delete booking"
+                          onClick={() => updateReviewStatus(review.id, 'approved')}
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
                         >
-                          <FaTrash />
+                          <FaThumbsUp size={12} />
+                          Approve
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                        
+                        <button
+                          onClick={() => updateReviewStatus(review.id, 'rejected')}
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#fef2f2',
+                            color: '#dc2626',
+                            border: '1px solid #fecaca',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <FaThumbsDown size={12} />
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    
+                    <button
+                      onClick={() => deleteProductReview(review.id)}
+                      style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <FaTrash size={12} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
+
+      {/* Review Details Modal */}
+      {showDetails && selectedReview && renderProductReviewDetails(selectedReview)}
     </div>
   );
 };
 
 // ====================
-// REPORTS/ANALYTICS SCREEN COMPONENT
-// ====================
-
-// ====================
-// MAIN COMPONENT
+// MAIN SALES MANAGEMENT COMPONENT
 // ====================
 const SalesManagement = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [realtimeOrders, setRealtimeOrders] = useState(0);
-  const [notifications, setNotifications] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('orders');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [reviewStats, setReviewStats] = useState({
+    productReviews: 0,
+    serviceReviews: 0,
+    pendingProductReviews: 0,
+    pendingServiceReviews: 0,
+    averageProductRating: 0,
+    averageServiceRating: 0
+  });
+  const [orderStats, setOrderStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    totalRevenue: 0
+  });
+  const [bookingStats, setBookingStats] = useState({
+    totalBookings: 0,
+    pendingBookings: 0,
+    upcomingBookings: 0
+  });
 
-  // Function to fetch orders
-  const fetchOrdersData = useCallback(async () => {
+  // Fetch all statistics
+  const fetchAllStats = useCallback(async () => {
     try {
-      console.log('🔄 Starting fetchOrders...');
       setRefreshing(true);
       
-      // Get all orders with order_items and products
-      const { data: ordersData, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            id,
-            product_id,
-            quantity,
-            price,
-            products (
-              id,
-              name,
-              price,
-              image_url
-            )
-          )
-        `)
-        .order('created_at', { ascending: false });
+      // Fetch product reviews stats from 'reviews' table
+      const { data: productReviews, error: productError } = await supabase
+        .from('reviews')
+        .select('rating, status');
+      
+      // Fetch service reviews stats from 'service_reviews' table
+      const { data: serviceReviews, error: serviceError } = await supabase
+        .from('service_reviews')
+        .select('rating, status');
 
-      console.log('📊 Orders data with items:', ordersData);
+      // Fetch order stats
+      const { data: orders, error: orderError } = await supabase
+        .from('orders')
+        .select('status, total');
+
+      // Fetch booking stats
+      const { data: bookings, error: bookingError } = await supabase
+        .from('bookings')
+        .select('status, booking_date');
+
+      if (productError) console.error('Error fetching product reviews:', productError);
+      if (serviceError) console.error('Error fetching service reviews:', serviceError);
+      if (orderError) console.error('Error fetching orders:', orderError);
+      if (bookingError) console.error('Error fetching bookings:', bookingError);
+
+      const productReviewsData = productReviews || [];
+      const serviceReviewsData = serviceReviews || [];
+      const ordersData = orders || [];
+      const bookingsData = bookings || [];
+
+      // Calculate review stats
+      const pendingProductReviews = productReviewsData.filter(r => r.status === 'pending').length;
+      const pendingServiceReviews = serviceReviewsData.filter(r => r.status === 'pending').length;
       
-      if (error) throw error;
+      const avgProductRating = productReviewsData.length > 0
+        ? productReviewsData.reduce((sum, r) => sum + (r.rating || 0), 0) / productReviewsData.length
+        : 0;
       
-      // Get user IDs from orders
-      const userIds = [...new Set(ordersData.map(order => order.user_id).filter(Boolean))];
-      console.log('👤 User IDs found:', userIds);
-      
-      // Fetch user data from the PUBLIC users table
-      let usersMap = {};
-      if (userIds.length > 0) {
-        const { data: usersData, error: usersError } = await supabase
-          .from('users')
-          .select('id, full_name, email, phone')
-          .in('id', userIds);
-        
-        console.log('👥 Users data from public.users:', usersData);
-        
-        if (!usersError && usersData) {
-          usersData.forEach(user => {
-            usersMap[user.id] = {
-              email: user.email,
-              phone: user.phone,
-              full_name: user.full_name
-            };
-          });
-        }
-        console.log('🗺️ Users map:', usersMap);
-      }
-      
-      const formattedOrders = ordersData.map(order => {
-        const user = usersMap[order.user_id];
-        
-        // Extract product details from order_items
-        const products = order.order_items?.map(item => ({
-          product_id: item.product_id,
-          name: item.products?.name || `Product #${item.product_id}`,
-          quantity: item.quantity || 1,
-          price: item.price || 0,
-          image_url: item.products?.image_url || null
-        })) || [];
-        
-        // Calculate total items count
-        const totalItems = products.reduce((sum, product) => sum + (product.quantity || 1), 0);
-        
-        return {
-          id: order.id,
-          // Customer data
-          customer_name: order.customer_name || (user?.full_name || 'Customer'),
-          customer_email: order.customer_email || (user?.email || ''),
-          customer_phone: order.customer_phone || (user?.phone || ''),
-          total: order.total || order.total_amount || 0,
-          status: order.status || 'pending',
-          payment_method: order.payment_method || 'cash',
-          payment_status: order.payment_status || 'pending',
-          channel: order.channel || 'walk-in',
-          notes: order.notes || '',
-          created_at: order.created_at,
-          user_id: order.user_id,
-          // Product data
-          products: products,
-          total_items: totalItems,
-          // Additional fields for display
-          product_count: products.length,
-          has_products: products.length > 0,
-          subtotal: order.subtotal || 0,
-          tax: order.tax || 0,
-          discount: order.discount || 0,
-          profile_full_name: user?.full_name || null
-        };
+      const avgServiceRating = serviceReviewsData.length > 0
+        ? serviceReviewsData.reduce((sum, r) => sum + (r.rating || 0), 0) / serviceReviewsData.length
+        : 0;
+
+      // Calculate order stats
+      const pendingOrders = ordersData.filter(o => o.status === 'pending').length;
+      const totalRevenue = ordersData
+        .filter(o => o.status === 'completed' || o.status === 'confirmed')
+        .reduce((sum, o) => sum + (o.total || 0), 0);
+
+      // Calculate booking stats
+      const pendingBookings = bookingsData.filter(b => b.status === 'pending').length;
+      const upcomingBookings = bookingsData.filter(b => 
+        b.status === 'confirmed' && 
+        b.booking_date && 
+        new Date(b.booking_date) > new Date()
+      ).length;
+
+      setReviewStats({
+        productReviews: productReviewsData.length,
+        serviceReviews: serviceReviewsData.length,
+        pendingProductReviews,
+        pendingServiceReviews,
+        averageProductRating: avgProductRating,
+        averageServiceRating: avgServiceRating
       });
-      
-      console.log('📝 Final formatted orders with products:', formattedOrders);
-      setOrders(formattedOrders);
-      
-      // Update dashboard counter with count of recent orders (e.g., from last 24 hours)
-      const twentyFourHoursAgo = new Date();
-      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
-      
-      const recentOrders = formattedOrders.filter(order => 
-        new Date(order.created_at) >= twentyFourHoursAgo
-      ) || [];
-      
-      setRealtimeOrders(recentOrders.length);
-      
+
+      setOrderStats({
+        totalOrders: ordersData.length,
+        pendingOrders,
+        totalRevenue
+      });
+
+      setBookingStats({
+        totalBookings: bookingsData.length,
+        pendingBookings,
+        upcomingBookings
+      });
+
     } catch (error) {
-      console.error('Error:', error);
-      setOrders([]);
+      console.error('Error fetching stats:', error);
     } finally {
       setRefreshing(false);
-      setLoading(false);
     }
   }, []);
 
   // Initial fetch
   useEffect(() => {
-    fetchOrdersData();
-  }, [fetchOrdersData]);
-
-  // Real-time subscription
-  useEffect(() => {
-    const orderSubscription = supabase
-      .channel('orders')
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'orders' 
-        },
-        (payload) => {
-          console.log('New order received:', payload.new);
-          // Refresh orders when new order is added
-          fetchOrdersData();
-        }
-      )
-      .on('postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders'
-        },
-        (payload) => {
-          console.log('Order updated:', payload.new);
-          // Refresh orders when order is updated
-          fetchOrdersData();
-        }
-      )
-      .on('postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'orders'
-        },
-        (payload) => {
-          console.log('Order deleted:', payload.old);
-          // Refresh orders when order is deleted
-          fetchOrdersData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      orderSubscription.unsubscribe();
+    const loadData = async () => {
+      setLoading(true);
+      await fetchAllStats();
+      setLoading(false);
     };
-  }, [fetchOrdersData]);
-
-  // Function to mark notifications as read
-  const markAsRead = (notificationId) => {
-    setNotifications(prev => prev.map(notification =>
-      notification.id === notificationId ? { ...notification, read: true } : notification
-    ));
-  };
-
-  // Function to clear all notifications
-  const clearNotifications = () => {
-    setNotifications([]);
-  };
+    loadData();
+  }, [fetchAllStats]);
 
   const tabs = [
-    { key: 'dashboard', icon: <FaChartBar />, label: 'Dashboard', count: realtimeOrders },
-    { key: 'orders', icon: <FaShoppingBag />, label: 'Orders' },
-    { key: 'bookings', icon: <FaCalendarCheck />, label: 'Bookings' },
-   
-   
+    { key: 'orders', icon: <FaShoppingBag />, label: 'Orders', badge: orderStats.pendingOrders },
+    { key: 'bookings', icon: <FaCalendarCheck />, label: 'Bookings', badge: bookingStats.pendingBookings },
+    { key: 'product-reviews', icon: <FaStar />, label: 'Product Reviews', badge: reviewStats.pendingProductReviews },
+    { key: 'service-reviews', icon: <FaTools />, label: 'Service Reviews', badge: reviewStats.pendingServiceReviews },
   ];
 
+  // Loading state for the entire component
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '400px',
+        flexDirection: 'column',
+        gap: '20px',
+        background: '#f9fafb'
+      }}>
+        <style>
+          {`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}
+        </style>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid #e5e7eb',
+          borderTop: '4px solid #3b82f6',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <div style={{ color: '#6b7280', fontSize: '16px' }}>
+          Loading sales data...
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={styles.container}>
+    <div style={{
+      background: '#f8fafc',
+      minHeight: '100vh',
+      padding: '24px',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    }}>
       <style>
         {`
-         /* Add these to your global CSS file */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e5e7eb;
-  border-top: 4px solid #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-.notification-slide {
-  animation: slideIn 0.3s ease-out;
-}
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
         `}
       </style>
       
-      <div style={styles.header}>
-        <div style={styles.headerContent}>
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
+        borderRadius: '16px',
+        padding: '32px',
+        marginBottom: '24px',
+        boxShadow: '0 10px 25px rgba(30, 58, 138, 0.15)',
+        color: 'white',
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
           <div>
-            <h1 style={styles.title}>
+            <h1 style={{
+              fontSize: '32px',
+              fontWeight: '800',
+              margin: '0 0 8px 0',
+              display: 'flex',
+              alignItems: 'center',
+              letterSpacing: '-0.5px',
+            }}>
               <FaShoppingBag style={{ marginRight: '12px' }} />
-              Sales Management
-              {realtimeOrders > 0 && (
-                <span style={{
-                  marginLeft: '12px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  background: '#ef4444',
-                  color: 'white',
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <span className="pulse">●</span>
-                  {realtimeOrders} new order{realtimeOrders !== 1 ? 's' : ''}
-                </span>
-              )}
+              Sales & Reviews Management
             </h1>
-            <p style={styles.subtitle}>Track sales, manage orders, and analyze performance</p>
+            <p style={{
+              fontSize: '16px',
+              opacity: 0.9,
+              margin: 0,
+              fontWeight: '400'
+            }}>
+              Manage orders, bookings, and customer reviews in one place
+            </p>
           </div>
-          <div style={styles.headerActions}>
-            {/* Refresh Button */}
+          <div style={{
+            display: 'flex',
+            gap: '16px',
+            alignItems: 'center',
+          }}>
             <button
               onClick={() => {
-                fetchOrdersData();
+                setRefreshing(true);
+                fetchAllStats().finally(() => {
+                  setRefreshing(false);
+                });
               }}
               disabled={refreshing}
               style={{
@@ -2492,1009 +5601,132 @@ const SalesManagement = () => {
               }}
             >
               <FaSync style={refreshing ? { animation: 'spin 1s linear infinite' } : {}} />
-              {refreshing ? 'Refreshing...' : 'Refresh'}
+              {refreshing ? 'Refreshing...' : 'Refresh All'}
             </button>
           </div>
         </div>
       </div>
 
-      <div style={styles.tabContainer}>
+      {/* Stats Summary */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        <StatCard
+          icon={FaShoppingBag}
+          title="Total Orders"
+          value={orderStats.totalOrders}
+          color="#3b82f6"
+          bgColor="#eff6ff"
+          subtitle={`${orderStats.pendingOrders}  • ₱${orderStats.totalRevenue.toLocaleString()} revenue`}
+          onClick={() => setActiveTab('orders')}
+        />
+        <StatCard
+          icon={FaCalendarCheck}
+          title="Total Bookings"
+          value={bookingStats.totalBookings}
+          color="#EC4899"
+          bgColor="#fce7f3"
+          subtitle={`${bookingStats.pendingBookings} pending • ${bookingStats.upcomingBookings} upcoming`}
+          onClick={() => setActiveTab('bookings')}
+        />
+        <StatCard
+          icon={FaStar}
+          title="Product Reviews"
+          value={reviewStats.productReviews}
+          color="#8B5CF6"
+          bgColor="#f5f3ff"
+          subtitle={`${reviewStats.pendingProductReviews} pending • Avg: ${reviewStats.averageProductRating.toFixed(1)}⭐`}
+          onClick={() => setActiveTab('product-reviews')}
+        />
+        <StatCard
+          icon={FaTools}
+          title="Service Reviews"
+          value={reviewStats.serviceReviews}
+          color="#10B981"
+          bgColor="#d1fae5"
+          subtitle={`${reviewStats.pendingServiceReviews} pending • Avg: ${reviewStats.averageServiceRating.toFixed(1)}⭐`}
+          onClick={() => setActiveTab('service-reviews')}
+        />
+      </div>
+
+      {/* Tabs */}
+      <div style={{
+        display: 'flex',
+        background: 'white',
+        borderRadius: '12px',
+        padding: '8px',
+        marginBottom: '24px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+        overflowX: 'auto',
+      }}>
         {tabs.map(tab => (
           <button
             key={tab.key}
             style={{
-              ...styles.tabButton,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '16px 24px',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '15px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap',
+              flex: 1,
+              justifyContent: 'center',
+              minWidth: '140px',
+              position: 'relative',
               background: activeTab === tab.key ? 'linear-gradient(135deg, #0077b6 0%, #00b4d8 100%)' : 'transparent',
               color: activeTab === tab.key ? '#ffffff' : '#023e8a',
-              borderBottom: activeTab === tab.key ? '3px solid #0077b6' : 'none',
-              position: 'relative'
             }}
             onClick={() => setActiveTab(tab.key)}
           >
-            <span style={styles.tabIcon}>{tab.icon}</span>
-            <span style={styles.tabLabel}>{tab.label}</span>
-            {tab.count > 0 && (
+            <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+            <span style={{ fontSize: '15px' }}>{tab.label}</span>
+            {tab.badge > 0 && (
               <span style={{
-                ...styles.tabBadge,
-                animation: tab.key === 'dashboard' && tab.count > 0 ? 'pulse 2s infinite' : 'none'
+                position: 'absolute',
+                top: '-6px',
+                right: '-6px',
+                background: '#ef4444',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: '700',
+                minWidth: '20px',
+                height: '20px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2px'
               }}>
-                {tab.count}
+                {tab.badge}
               </span>
             )}
           </button>
         ))}
       </div>
 
-      <div style={styles.content}>
-        {activeTab === 'dashboard' && <DashboardScreen orders={orders} />}
-        {activeTab === 'orders' && <OrdersScreen orders={orders} fetchOrders={fetchOrdersData} />}
-      
-        {activeTab === 'bookings' && <BookingManagement />}
-        
+      {/* Content */}
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '32px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+        minHeight: '500px'
+      }}>
+        {activeTab === 'orders' && <OrdersManagementTab />}
+        {activeTab === 'bookings' && <BookingsManagementTab />}
+        {activeTab === 'product-reviews' && <ProductReviewsTab />}
+        {activeTab === 'service-reviews' && <ServiceReviewsTab />}
       </div>
     </div>
   );
-};
-
-// ====================
-// STYLES
-// ====================
-const styles = {
-  container: {
-    background: '#f8fafc',
-    minHeight: '100vh',
-    padding: '24px',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-  },
-  header: {
-    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
-    borderRadius: '16px',
-    padding: '32px',
-    marginBottom: '24px',
-    boxShadow: '0 10px 25px rgba(30, 58, 138, 0.15)',
-    color: 'white',
-  },
-  headerContent: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: '32px',
-    fontWeight: '800',
-    margin: '0 0 8px 0',
-    display: 'flex',
-    alignItems: 'center',
-    letterSpacing: '-0.5px',
-  },
-  subtitle: {
-    fontSize: '16px',
-    opacity: 0.9,
-    margin: 0,
-    fontWeight: '400'
-  },
-  headerActions: {
-    display: 'flex',
-    gap: '16px',
-    alignItems: 'center',
-  },
-  tabContainer: {
-    display: 'flex',
-    background: 'white',
-    borderRadius: '12px',
-    padding: '8px',
-    marginBottom: '24px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-    overflowX: 'auto',
-  },
-  tabButton: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '16px 24px',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '15px',
-    fontWeight: '600',
-    transition: 'all 0.2s',
-    whiteSpace: 'nowrap',
-    flex: 1,
-    justifyContent: 'center',
-    minWidth: '120px',
-  },
-  tabIcon: {
-    fontSize: '18px',
-  },
-  tabLabel: {
-    fontSize: '15px',
-  },
-  tabBadge: {
-    background: '#ef4444',
-    color: 'white',
-    fontSize: '12px',
-    fontWeight: 'bold',
-    padding: '2px 8px',
-    borderRadius: '10px',
-    minWidth: '20px',
-    textAlign: 'center',
-  },
-  content: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '32px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '100px 20px',
-    textAlign: 'center',
-  },
-  loadingText: {
-    fontSize: '16px',
-    color: '#6b7280',
-    margin: '20px 0 0 0',
-  },
-  // Dashboard Styles
-  dashboard: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px',
-  },
-  dashboardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '16px',
-  },
-  dashboardTitle: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#1f2937',
-    margin: 0,
-  },
-  headerControls: {
-    display: 'flex',
-    gap: '16px',
-    alignItems: 'center',
-  },
-  timeRangeSelector: {
-    display: 'flex',
-    gap: '8px',
-    background: '#f8fafc',
-    padding: '4px',
-    borderRadius: '8px',
-  },
-  timeRangeButton: {
-    padding: '8px 16px',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-  refreshButton: {
-    background: '#f3f4f6',
-    color: '#374151',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    transition: 'all 0.2s',
-  },
-  todayStats: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '20px',
-    marginBottom: '24px',
-  },
-  todayStatCard: {
-    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-    padding: '24px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    border: '1px solid #e2e8f0',
-  },
-  todayStatIcon: {
-    background: 'white',
-    padding: '16px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-  },
-  todayStatLabel: {
-    fontSize: '14px',
-    color: '#64748b',
-    marginBottom: '4px',
-  },
-  todayStatValue: {
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#1e293b',
-  },
-  kpiGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '20px',
-    marginBottom: '32px',
-  },
-  kpiCard: {
-    background: 'white',
-    padding: '24px',
-    borderRadius: '16px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    border: '1px solid #f1f5f9',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  kpiIcon: {
-    width: '60px',
-    height: '60px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  kpiContent: {
-    flex: 1,
-  },
-  kpiLabel: {
-    fontSize: '14px',
-    color: '#64748b',
-    marginBottom: '8px',
-    fontWeight: '500',
-  },
-  kpiValue: {
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: '8px',
-    letterSpacing: '-0.5px',
-  },
-  kpiChange: {
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '13px',
-  },
-  chartsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '24px',
-  },
-  chartCard: {
-    background: 'white',
-    borderRadius: '16px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-    border: '1px solid #f1f5f9',
-    overflow: 'hidden',
-    transition: 'transform 0.2s',
-  },
-  chartHeader: {
-    padding: '24px 24px 0',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  chartTitle: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#1e293b',
-    margin: 0,
-  },
-  chartTimeRange: {
-    fontSize: '13px',
-    color: '#64748b',
-    background: '#f8fafc',
-    padding: '6px 12px',
-    borderRadius: '20px',
-  },
-  chartContent: {
-    padding: '24px',
-  },
-  revenueChart: {
-    display: 'flex',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: '200px',
-    gap: '16px',
-  },
-  revenueBarContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    flex: 1,
-  },
-  revenueBarLabel: {
-    fontSize: '13px',
-    color: '#64748b',
-    marginBottom: '12px',
-    fontWeight: '500',
-  },
-  revenueBarWrapper: {
-    width: '48px',
-    height: '160px',
-    background: '#f8fafc',
-    borderRadius: '12px',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  revenueBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderRadius: '12px',
-    transition: 'height 0.3s ease',
-  },
-  revenueBarValue: {
-    position: 'absolute',
-    top: '-30px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    fontSize: '12px',
-    color: '#475569',
-    fontWeight: '500',
-    whiteSpace: 'nowrap',
-  },
-  revenueGrowth: {
-    display: 'flex',
-    alignItems: 'center',
-    marginTop: '8px',
-  },
-  topServicesList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  topServiceItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '16px',
-    background: '#f8fafc',
-    borderRadius: '12px',
-    transition: 'background 0.2s',
-  },
-  serviceRank: {
-    width: '36px',
-    height: '36px',
-    background: 'linear-gradient(135deg, #0077b6 0%, #00b4d8 100%)',
-    color: 'white',
-    borderRadius: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 'bold',
-    fontSize: '15px',
-  },
-  serviceInfo: {
-    flex: 1,
-  },
-  serviceName: {
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: '6px',
-    fontSize: '15px',
-  
-  },
-  serviceOrders: {
-    background: '#e0f2fe',
-    color: '#0369a1',
-    padding: '4px 8px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: '500',
-  },
-  serviceRevenue: {
-    textAlign: 'right',
-  },
-  revenueAmount: {
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: '4px',
-    fontSize: '16px',
-  },
-  revenuePercentage: {
-    fontSize: '13px',
-    color: '#64748b',
-  },
-  recentOrdersTable: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  tableHeader: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(6, 1fr)',
-    padding: '16px',
-    background: '#f8fafc',
-    borderRadius: '12px',
-    fontWeight: '600',
-    color: '#475569',
-    fontSize: '14px',
-    marginBottom: '8px',
-  },
-  tableRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(6, 1fr)',
-    padding: '16px',
-    borderBottom: '1px solid #f1f5f9',
-    alignItems: 'center',
-    transition: 'background 0.2s',
-  },
-  tableCell: {
-    padding: '8px 12px',
-    fontSize: '14px',
-  },
-  orderId: {
-    fontFamily: 'monospace',
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  customerCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  amountCell: {
-    fontWeight: '600',
-    color: '#0077b6',
-  },
-  statusBadge: {
-    display: 'inline-block',
-    padding: '6px 12px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  channelBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '6px 12px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '500',
-  },
-  viewAllButton: {
-    background: 'transparent',
-    color: '#0077b6',
-    border: '1px solid #0077b6',
-    padding: '8px 20px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-  // Screen Container Styles
-  screenContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px',
-  },
-  screenHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '16px',
-  },
-  screenTitle: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#1e293b',
-    margin: '0 0 4px 0',
-  },
-  screenSubtitle: {
-    fontSize: '14px',
-    color: '#64748b',
-    margin: 0,
-  },
-  screenActions: {
-    display: 'flex',
-    gap: '16px',
-    alignItems: 'center',
-  },
-  exportButton: {
-    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    color: 'white',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    fontSize: '14px',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  filtersPanel: {
-    background: '#f8fafc',
-    borderRadius: '12px',
-    padding: '24px',
-    marginBottom: '24px',
-    border: '1px solid #e2e8f0',
-  },
-  filterRow: {
-    display: 'flex',
-    gap: '24px',
-    marginBottom: '20px',
-  },
-  filterGroup: {
-    flex: 1,
-  },
-  filterLabel: {
-    display: 'block',
-    fontSize: '13px',
-    color: '#475569',
-    marginBottom: '8px',
-    fontWeight: '500',
-  },
-  filterSelect: {
-    width: '100%',
-    padding: '10px 12px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    fontSize: '14px',
-    background: 'white',
-    cursor: 'pointer',
-    transition: 'border 0.2s',
-  },
-  searchGroup: {
-    flex: 2,
-    position: 'relative',
-  },
-  searchIcon: {
-    position: 'absolute',
-    left: '12px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    color: '#94a3b8',
-    fontSize: '16px',
-  },
-  searchInput: {
-    width: '100%',
-    padding: '10px 12px 10px 40px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    fontSize: '14px',
-    background: 'white',
-    transition: 'border 0.2s',
-  },
-  clearButton: {
-    background: '#f1f5f9',
-    color: '#475569',
-    border: '1px solid #e2e8f0',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-  ordersTableContainer: {
-    overflowX: 'auto',
-    borderRadius: '12px',
-    border: '1px solid #f1f5f9',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    minWidth: '800px',
-  },
-  th: {
-    padding: '16px',
-    textAlign: 'left',
-    background: '#f8fafc',
-    color: '#475569',
-    fontWeight: '600',
-    fontSize: '14px',
-    borderBottom: '1px solid #e2e8f0',
-  },
-  tr: {
-    borderBottom: '1px solid #f1f5f9',
-    transition: 'background 0.2s',
-  },
-  td: {
-    padding: '16px',
-    fontSize: '14px',
-    color: '#475569',
-  },
-  customerName: {
-    fontWeight: '600',
-    color: '#1e293b',
-    fontSize: '14px',
-  },
-  customerEmail: {
-    fontSize: '13px',
-    color: '#64748b',
-  },
-  amount: {
-    fontWeight: '600',
-    color: '#0077b6',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-    backdropFilter: 'blur(4px)',
-  },
-  modal: {
-    background: 'white',
-    borderRadius: '20px',
-    padding: '32px',
-    maxWidth: '800px',
-    width: '90%',
-    maxHeight: '90vh',
-    overflowY: 'auto',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-  },
-  modalHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '24px',
-    paddingBottom: '16px',
-    borderBottom: '1px solid #e2e8f0',
-  },
-  closeButton: {
-    background: 'none',
-    border: 'none',
-    fontSize: '28px',
-    cursor: 'pointer',
-    color: '#94a3b8',
-    transition: 'color 0.2s',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px',
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '20px',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  formLabel: {
-    fontSize: '14px',
-    color: '#475569',
-    fontWeight: '500',
-  },
-  formInput: {
-    padding: '12px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    fontSize: '14px',
-    transition: 'border 0.2s',
-  },
-  formTextarea: {
-    padding: '12px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    fontSize: '14px',
-    resize: 'vertical',
-    minHeight: '80px',
-    transition: 'border 0.2s',
-  },
-  formActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '12px',
-  },
-  cancelButton: {
-    background: 'transparent',
-    color: '#475569',
-    border: '1px solid #e2e8f0',
-    padding: '12px 24px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-  submitButton: {
-    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    color: 'white',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-  // Services Screen Styles
-  addButton: {
-    background: 'linear-gradient(135deg, #0077b6 0%, #00b4d8 100%)',
-    color: 'white',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    fontSize: '14px',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  servicesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-    gap: '24px',
-  },
-  serviceCard: {
-    background: 'white',
-    borderRadius: '16px',
-    border: '1px solid #f1f5f9',
-    overflow: 'hidden',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  serviceCardHeader: {
-    padding: '24px 24px 16px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  serviceIcon: {
-    width: '56px',
-    height: '56px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'white',
-    fontSize: '24px',
-    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
-  },
-  serviceStatus: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    fontSize: '13px',
-    color: '#64748b',
-  },
-  statusDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-  },
-  serviceCardBody: {
-    padding: '0 24px',
-  },
-  serviceName: {
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#1e293b',
-    margin: '0 0 8px 0',
-  },
-  serviceDescription: {
-    fontSize: '14px',
-    color: '#64748b',
-    lineHeight: '1.5',
-    margin: '0 0 16px 0',
-  },
-  serviceDetails: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '12px',
-    marginBottom: '20px',
-  },
-  detailItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  detailLabel: {
-    fontSize: '12px',
-    color: '#94a3b8',
-  },
-  detailValue: {
-    fontSize: '14px',
-    color: '#475569',
-    fontWeight: '500',
-  },
-  serviceCardFooter: {
-    padding: '20px 24px',
-    background: '#f8fafc',
-    borderTop: '1px solid #f1f5f9',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  servicePrice: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  priceLabel: {
-    fontSize: '12px',
-    color: '#94a3b8',
-  },
-  priceValue: {
-    fontSize: '20px',
-    fontWeight: '700',
-    color: '#0077b6',
-  },
-  serviceActions: {
-    display: 'flex',
-    gap: '8px',
-  },
-  editButton: {
-    background: 'transparent',
-    color: '#475569',
-    border: '1px solid #e2e8f0',
-    padding: '8px 16px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '500',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    transition: 'all 0.2s',
-  },
-  deactivateButton: {
-    background: '#fef2f2',
-    color: '#dc2626',
-    border: '1px solid #fecaca',
-    padding: '8px 16px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-  activateButton: {
-    background: '#f0fdf4',
-    color: '#059669',
-    border: '1px solid #bbf7d0',
-    padding: '8px 16px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-  // Booking Management Styles
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '20px',
-    marginBottom: '24px',
-  },
-  statCard: {
-    background: 'white',
-    borderRadius: '12px',
-    padding: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    border: '1px solid #f1f5f9',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-  },
-  actionButtons: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  confirmButton: {
-    background: '#10b981',
-    color: 'white',
-    border: 'none',
-    padding: '6px 10px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    transition: 'all 0.2s',
-  },
-  completeButton: {
-    background: '#0077b6',
-    color: 'white',
-    border: 'none',
-    padding: '6px 10px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    transition: 'all 0.2s',
-  },
-  cancelButtonSmall: {
-    background: '#fef2f2',
-    color: '#dc2626',
-    border: '1px solid #fecaca',
-    padding: '6px 10px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    transition: 'all 0.2s',
-  },
-  deleteButton: {
-    background: '#f3f4f6',
-    color: '#6b7280',
-    border: '1px solid #e5e7eb',
-    padding: '6px 10px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    transition: 'all 0.2s',
-  },
-  // Analytics Screen Styles
-  analyticsSelect: {
-    padding: '12px 24px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    fontSize: '14px',
-    background: 'white',
-    cursor: 'pointer',
-    transition: 'border 0.2s',
-  },
-  analyticsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '24px',
-  },
-  analyticsCard: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '24px',
-    border: '1px solid #f1f5f9',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-  },
-  analyticsTitle: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#1e293b',
-    margin: '0 0 20px 0',
- 
-  },
-  categoryInfo: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: '8px',
-  },
-  categoryName: {
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#1e293b',
-  },
-  categoryRevenue: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#0077b6',
-  },
-  progressBar: {
-    width: '100%',
-    height: '8px',
-    background: '#f1f5f9',
-    borderRadius: '4px',
-    overflow: 'hidden',
-  },
 };
 
 export default SalesManagement;

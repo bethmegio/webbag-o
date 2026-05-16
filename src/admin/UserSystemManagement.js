@@ -1,10 +1,11 @@
-// UserSystemManagement.js - SIMPLE AUTO-SYNC VERSION
-import React, { useState, useEffect, useCallback } from 'react';
+// UserSystemManagement.js - UPDATED FOR YOUR ACTUAL SCHEMA
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { 
-  FaUser, FaSearch, FaTrash, FaEdit, FaSync, FaEye, FaEyeSlash, 
-  FaPlus, FaCalendar, FaCircle, FaTimes, FaUserPlus, FaCheckCircle, 
-  FaExclamationTriangle, FaDatabase, FaShieldAlt, FaEnvelope, FaPhone 
+  FaUser, FaSearch, FaTimes, FaUserPlus, FaCheckCircle, 
+  FaExclamationTriangle, FaDatabase, FaShieldAlt, FaEnvelope, FaPhone,
+  FaTrash, FaEye, FaStar, FaSync, FaEdit, FaLock, FaUnlock, FaCalendarAlt,
+  FaShoppingBag, FaTools, FaUserCheck, FaUserTimes, FaUserClock, FaKey
 } from 'react-icons/fa';
 
 const UserSystemManagement = () => {
@@ -12,459 +13,106 @@ const UserSystemManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
-  const [showInactive, setShowInactive] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showEditUser, setShowEditUser] = useState(false);
   const [newUser, setNewUser] = useState({
     email: '',
-    password: '',
     full_name: '',
     phone: '',
-    system_management: false
+    role: 'user'
   });
-  const [currentUser, setCurrentUser] = useState(null);
+  const [editUser, setEditUser] = useState(null);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [syncInfo, setSyncInfo] = useState({
-    status: 'idle', // 'idle', 'syncing', 'success', 'error'
+    status: 'idle',
     message: '',
-    lastSync: null,
-    syncedCount: 0
+    lastSync: null
+  });
+  const [userStats, setUserStats] = useState({
+    total: 0,
+    admins: 0,
+    active: 0,
+    verified: 0,
+    pending: 0
   });
 
-  // SIMPLIFIED: Direct auto-sync on page load
+  // Load users from your actual users table
   useEffect(() => {
-    const loadAndSyncUsers = async () => {
-      try {
-        setLoading(true);
-        setSyncInfo({ ...syncInfo, status: 'syncing', message: 'Loading users...' });
-        
-        console.log('🚀 Starting user management initialization...');
-        
-        // 1. First, try to get the current user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setCurrentUser({
-            id: user.id,
-            email: user.email,
-            is_admin: user.email === 'admin@gmail.com' // Hardcoded admin check
-          });
-        }
-        
-        // 2. Try to fetch existing users from database
-        let dbUsers = [];
-        try {
-         const { data, error: dbError } = await supabase
-  .from('profiles')  // ← CORRECT TABLE NAME
-  .select('*')
-  .order('created_at', { ascending: false });
-            
-          if (dbError) {
-            console.log('Database query failed, might be empty or not exist:', dbError.message);
-          } else if (data && data.length > 0) {
-            dbUsers = data;
-            console.log(`✅ Found ${data.length} users in database`);
-          }
-        } catch (dbErr) {
-          console.log('Database error (table might not exist):', dbErr.message);
-        }
-        
-        // 3. If no users in database, use HARDCODED DATA from your image.png
-        if (dbUsers.length === 0) {
-          console.log('📭 No users in database, using hardcoded data...');
-          setSyncInfo({ ...syncInfo, status: 'syncing', message: 'Loading default users...' });
-          
-          // Use the exact data from your image.png
-          const hardcodedUsers = [
-            {
-              uid: '042aee60-a540-4379-b409-1f1f8249dda7',
-              email: 'admin@gmail.com',
-              display_name: '-',
-              phone: '-',
-              system_management: true,
-              is_active: true,
-              role: 'admin',
-              created_at: new Date().toISOString()
-            },
-            {
-              uid: '3fb8b729-323f-4686-968f-fbbac23d69e3',
-              email: 'beth@gmail.com',
-              display_name: '-',
-              phone: '-',
-              system_management: false,
-              is_active: true,
-              role: 'user',
-              created_at: new Date().toISOString()
-            },
-            {
-              uid: 'a05065b1-2a35-4a17-9e86-c11d6e6d94e',
-              email: 'ikaw@gmail.com',
-              display_name: 'ikaww@',
-              phone: '-',
-              system_management: false,
-              is_active: true,
-              role: 'user',
-              created_at: new Date().toISOString()
-            },
-            {
-              uid: '35df1d7b-2e9d-48fe-b413-3241c5aa65cd',
-              email: 'mrnabeth@gmail.com',
-              display_name: '-',
-              phone: '-',
-              system_management: false,
-              is_active: true,
-              role: 'user',
-              created_at: new Date().toISOString()
-            },
-            {
-              uid: '17cc0b8d1-198f-403e-8cc5-c85df5e1c2bd',
-              email: 'ricky123@gmail.com',
-              display_name: 'ricky megio',
-              phone: '-',
-              system_management: false,
-              is_active: true,
-              role: 'user',
-              created_at: new Date().toISOString()
-            },
-            {
-              uid: '582748ed-1efa-416f-8185-46cb2d234cd1',
-              email: 'rina@gmail.com',
-              display_name: '-',
-              phone: '-',
-              system_management: false,
-              is_active: true,
-              role: 'user',
-              created_at: new Date().toISOString()
-            },
-            {
-              uid: 'cc430d46-d3f4-4e7b-9ef-fe3ec611782',
-              email: 'tryyy@gmail.com',
-              display_name: 'rinabeth',
-              phone: '-',
-              system_management: false,
-              is_active: true,
-              role: 'user',
-              created_at: new Date().toISOString()
-            },
-            {
-              uid: '00421f58-5007-4f10-8eef-dbf0bce84e20',
-              email: 'user4321@gmail.com',
-              display_name: '-',
-              phone: '-',
-              system_management: false,
-              is_active: true,
-              role: 'user',
-              created_at: new Date().toISOString()
-            },
-            {
-              uid: '5f0f50aa-3c77-48d9-84d6-54ff7fd4e142',
-              email: 'zamielapostol@gmail.com',
-              display_name: 'zamiel',
-              phone: '-',
-              system_management: false,
-              is_active: true,
-              role: 'user',
-              created_at: new Date().toISOString()
-            }
-          ];
-          
-          // Transform to match expected format
-          const transformedUsers = hardcodedUsers.map(user => ({
-            id: user.uid,
-            email: user.email,
-            full_name: user.display_name,
-            display_name: user.display_name,
-            phone: user.phone,
-            role: user.role,
-            is_admin: user.system_management,
-            system_management: user.system_management,
-            is_active: user.is_active,
-            created_at: user.created_at
-          }));
-          
-          setUsers(transformedUsers);
-          setSyncInfo({
-            status: 'success',
-            message: `Loaded ${transformedUsers.length} default users`,
-            lastSync: new Date(),
-            syncedCount: transformedUsers.length
-          });
-          
-          console.log(`✅ Displaying ${transformedUsers.length} hardcoded users`);
-        } else {
-          // 4. If we have database users, use them
-          const transformedUsers = dbUsers.map(user => ({
-            id: user.uid || user.id,
-            email: user.email,
-            full_name: user.display_name || user.full_name || '',
-            display_name: user.display_name || user.full_name || '',
-            phone: user.phone || '',
-            role: user.role || 'user',
-            is_admin: user.system_management || user.is_admin || false,
-            system_management: user.system_management || false,
-            is_active: user.is_active !== false,
-            created_at: user.created_at
-          }));
-          
-          setUsers(transformedUsers);
-          setSyncInfo({
-            status: 'success',
-            message: `Loaded ${transformedUsers.length} users from database`,
-            lastSync: new Date(),
-            syncedCount: transformedUsers.length
-          });
-          
-          console.log(`✅ Displaying ${transformedUsers.length} database users`);
-        }
-        
-      } catch (err) {
-        console.error('❌ Initialization error:', err);
-        setError(`Failed to load users: ${err.message}`);
-        setSyncInfo({ ...syncInfo, status: 'error', message: err.message });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadAndSyncUsers();
+    loadUsers();
   }, []);
 
-  // Manual sync from Supabase Auth
-  const syncFromAuth = async () => {
+  const loadUsers = async () => {
     try {
       setLoading(true);
-      setSyncInfo({ ...syncInfo, status: 'syncing', message: 'Syncing from Supabase Auth...' });
+      setSyncInfo({ ...syncInfo, status: 'syncing', message: 'Loading users...' });
       
-      console.log('🔄 Starting manual sync from Auth...');
+      console.log('🚀 Loading users from Supabase...');
       
-      // Get auth users
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+      // Fetch from 'users' table with ALL your columns
+      const { data, error: dbError } = await supabase
+        .from('users')
+        .select(`
+          id, email, full_name, phone, role, is_admin, is_active,
+          email_verified, phone_verified, created_at, updated_at,
+          verified_at, email_verification_token, phone_verification_code,
+          verification_sent_at, phone_verification_sent_at
+        `)
+        .order('created_at', { ascending: false });
       
-      if (authError) {
-        throw new Error(`Auth error: ${authError.message}`);
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw new Error(`Database error: ${dbError.message}`);
       }
       
-      if (!authData?.users || authData.users.length === 0) {
-        setSyncInfo({ ...syncInfo, status: 'warning', message: 'No users found in Auth' });
-        return;
+      if (data && data.length > 0) {
+        setUsers(data);
+        
+        // Calculate statistics
+        const stats = {
+          total: data.length,
+          admins: data.filter(u => u.is_admin || u.role === 'admin').length,
+          active: data.filter(u => u.is_active).length,
+          verified: data.filter(u => u.email_verified).length,
+          pending: data.filter(u => !u.email_verified).length
+        };
+        setUserStats(stats);
+        
+        setSyncInfo({
+          status: 'success',
+          message: `Loaded ${data.length} users`,
+          lastSync: new Date()
+        });
+        
+        console.log(`✅ Loaded ${data.length} users`);
+      } else {
+        console.log('📭 No users found in database');
+        setUsers([]);
+        setUserStats({
+          total: 0,
+          admins: 0,
+          active: 0,
+          verified: 0,
+          pending: 0
+        });
+        setSyncInfo({
+          status: 'success',
+          message: 'No users found',
+          lastSync: new Date()
+        });
       }
-      
-      console.log(`✅ Found ${authData.users.length} users in Auth`);
-      
-      // Prepare users for database
-      const usersToSync = authData.users.map(authUser => ({
-        uid: authUser.id,
-        email: authUser.email,
-        display_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
-        phone: authUser.user_metadata?.phone || '',
-        system_management: false,
-        is_active: !authUser.banned_at,
-        role: 'user',
-        created_at: authUser.created_at,
-        updated_at: new Date().toISOString()
-      }));
-      
-      // Try to insert into database
-      let syncedCount = 0;
-      for (const user of usersToSync) {
-        try {
-          const { error: upsertError } = await supabase
-            .from('users')
-            .upsert(user, { onConflict: 'uid' });
-            
-          if (!upsertError) {
-            syncedCount++;
-          }
-        } catch (err) {
-          console.error(`Error syncing user ${user.email}:`, err);
-        }
-      }
-      
-      // Update local state
-      const transformedUsers = usersToSync.map(user => ({
-        id: user.uid,
-        email: user.email,
-        full_name: user.display_name,
-        display_name: user.display_name,
-        phone: user.phone,
-        role: user.role,
-        is_admin: user.system_management,
-        system_management: user.system_management,
-        is_active: user.is_active,
-        created_at: user.created_at
-      }));
-      
-      setUsers(transformedUsers);
-      setSyncInfo({
-        status: 'success',
-        message: `Synced ${syncedCount} users from Auth`,
-        lastSync: new Date(),
-        syncedCount: syncedCount
-      });
-      
-      console.log(`✅ Synced ${syncedCount} users`);
       
     } catch (err) {
-      console.error('❌ Sync error:', err);
-      setError(`Sync failed: ${err.message}`);
+      console.error('❌ Error loading users:', err);
+      setError(`Failed to load users: ${err.message}`);
       setSyncInfo({ ...syncInfo, status: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  // Quick test: Check if table exists
-  const checkTable = async () => {
-    try {
-      const { error } = await supabase
-        .from('users')
-        .select('uid')
-        .limit(1);
-        
-      if (error) {
-        alert(`Table check failed: ${error.message}\n\nPlease run the SQL to create the table first.`);
-        return false;
-      }
-      
-      alert('✅ Users table exists!');
-      return true;
-    } catch (err) {
-      alert(`Error: ${err.message}`);
-      return false;
-    }
-  };
-
-  // Show SQL for creating table
-  const showCreateTableSQL = () => {
-    const sql = `CREATE TABLE IF NOT EXISTS public.users (
-  uid UUID PRIMARY KEY,
-  email TEXT NOT NULL,
-  display_name TEXT,
-  phone TEXT,
-  system_management BOOLEAN DEFAULT FALSE,
-  is_active BOOLEAN DEFAULT TRUE,
-  role TEXT DEFAULT 'user',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Insert sample data matching your image
-INSERT INTO public.users (uid, email, display_name, phone, system_management) VALUES
-('042aee60-a540-4379-b409-1f1f8249dda7', 'admin@gmail.com', '-', '-', true),
-('3fb8b729-323f-4686-968f-fbbac23d69e3', 'beth@gmail.com', '-', '-', false),
-('a05065b1-2a35-4a17-9e86-c11d6e6d94e', 'ikaw@gmail.com', 'ikaww@', '-', false),
-('35df1d7b-2e9d-48fe-b413-3241c5aa65cd', 'mrnabeth@gmail.com', '-', '-', false),
-('17cc0b8d1-198f-403e-8cc5-c85df5e1c2bd', 'ricky123@gmail.com', 'ricky megio', '-', false),
-('582748ed-1efa-416f-8185-46cb2d234cd1', 'rina@gmail.com', '-', '-', false),
-('cc430d46-d3f4-4e7b-9ef-fe3ec611782', 'tryyy@gmail.com', 'rinabeth', '-', false),
-('00421f58-5007-4f10-8eef-dbf0bce84e20', 'user4321@gmail.com', '-', '-', false),
-('5f0f50aa-3c77-48d9-84d6-54ff7fd4e142', 'zamielapostol@gmail.com', 'zamiel', '-', false);`;
-    
-    alert(`Copy this SQL and run it in Supabase SQL Editor:\n\n${sql}`);
-  };
-
-  // Filter users based on search term
-  const filteredUsers = users.filter(user => {
-    if (!showInactive && !user.is_active) return false;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      user.email?.toLowerCase().includes(searchLower) ||
-      user.display_name?.toLowerCase().includes(searchLower) ||
-      user.full_name?.toLowerCase().includes(searchLower) ||
-      user.phone?.toLowerCase().includes(searchLower)
-    );
-  });
-
-  const handleDelete = (user) => {
-    setUserToDelete(user);
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!userToDelete) return;
-
-    try {
-      // Update local state
-      setUsers(users.map(u => 
-        u.id === userToDelete.id ? { ...u, is_active: false } : u
-      ));
-      
-      // Try to update database
-      try {
-        await supabase
-          .from('users')
-          .update({ is_active: false, updated_at: new Date().toISOString() })
-          .eq('uid', userToDelete.id);
-      } catch (dbErr) {
-        console.log('Database update failed, but local state updated:', dbErr.message);
-      }
-      
-      setShowDeleteConfirm(false);
-      setUserToDelete(null);
-      alert('✅ User deactivated');
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Failed to deactivate user');
-    }
-  };
-
-  const restoreUser = async (userId) => {
-    try {
-      setUsers(users.map(u => 
-        u.id === userId ? { ...u, is_active: true } : u
-      ));
-      
-      try {
-        await supabase
-          .from('users')
-          .update({ is_active: true, updated_at: new Date().toISOString() })
-          .eq('uid', userId);
-      } catch (dbErr) {
-        console.log('Database update failed:', dbErr.message);
-      }
-      
-      alert('✅ User restored');
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Failed to restore user');
-    }
-  };
-
-  const updateUserRole = async (userId, newRole) => {
-    try {
-      const isAdmin = newRole === 'admin';
-      
-      setUsers(users.map(u => 
-        u.id === userId ? { 
-          ...u, 
-          role: newRole,
-          is_admin: isAdmin,
-          system_management: isAdmin
-        } : u
-      ));
-      
-      try {
-        await supabase
-          .from('users')
-          .update({ 
-            role: newRole,
-            system_management: isAdmin,
-            updated_at: new Date().toISOString() 
-          })
-          .eq('uid', userId);
-      } catch (dbErr) {
-        console.log('Database update failed:', dbErr.message);
-      }
-      
-      alert(`✅ User role updated to ${newRole}`);
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Failed to update role');
-    }
-  };
-
+  // Create new user in YOUR users table
   const createUser = async () => {
     try {
       if (!newUser.email) {
@@ -472,59 +120,228 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
         return;
       }
 
-      // Create a temporary user object
-      const tempUser = {
-        id: `temp-${Date.now()}`,
-        email: newUser.email,
-        full_name: newUser.full_name || newUser.email.split('@')[0],
-        display_name: newUser.full_name || newUser.email.split('@')[0],
-        phone: newUser.phone || '',
-        role: newUser.system_management ? 'admin' : 'user',
-        is_admin: newUser.system_management,
-        system_management: newUser.system_management,
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newUser.email)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+
+      // Check if user already exists
+      const { data: existingUsers } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', newUser.email);
+
+      if (existingUsers && existingUsers.length > 0) {
+        setError('User with this email already exists');
+        return;
+      }
+
+      // Create user object matching YOUR schema
+      const userRecord = {
+        email: newUser.email.toLowerCase().trim(),
+        full_name: newUser.full_name?.trim() || '',
+        phone: newUser.phone?.trim() || '',
+        role: newUser.role || 'user',
+        is_admin: newUser.role === 'admin',
         is_active: true,
-        created_at: new Date().toISOString()
+        email_verified: false,
+        phone_verified: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      // Add to local state immediately
-      setUsers([tempUser, ...users]);
+      // Insert into YOUR users table
+      const { data, error: insertError } = await supabase
+        .from('users')
+        .insert([userRecord])
+        .select();
+
+      if (insertError) throw new Error(`Database insert failed: ${insertError.message}`);
+
+      // Update local state
+      if (data && data[0]) {
+        setUsers([data[0], ...users]);
+        setUserStats(prev => ({
+          ...prev,
+          total: prev.total + 1,
+          active: prev.active + 1,
+          pending: prev.pending + 1
+        }));
+      }
       
       // Reset form
       setNewUser({
         email: '',
-        password: '',
         full_name: '',
         phone: '',
-        system_management: false
+        role: 'user'
       });
       setShowAddUser(false);
-      
-      alert('✅ User added locally');
+      setError(null);
+      setSuccess('User created successfully!');
+      setTimeout(() => setSuccess(null), 3000);
       
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error creating user:', err);
       setError(err.message);
     }
   };
+
+  // Update user
+  const updateUser = async (userId, updates) => {
+    try {
+      const updateData = {
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      // Update local state
+      setUsers(users.map(u => 
+        u.id === userId ? { ...u, ...updateData } : u
+      ));
+
+      // Update stats if needed
+      if (updates.hasOwnProperty('is_active')) {
+        setUserStats(prev => ({
+          ...prev,
+          active: updates.is_active ? prev.active + 1 : prev.active - 1
+        }));
+      }
+
+      if (updates.hasOwnProperty('role') || updates.hasOwnProperty('is_admin')) {
+        const updatedUser = users.find(u => u.id === userId);
+        const isAdmin = updates.is_admin || (updates.role === 'admin');
+        const wasAdmin = updatedUser.is_admin || updatedUser.role === 'admin';
+        
+        if (isAdmin !== wasAdmin) {
+          setUserStats(prev => ({
+            ...prev,
+            admins: isAdmin ? prev.admins + 1 : prev.admins - 1
+          }));
+        }
+      }
+
+      setSuccess('User updated successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+      setEditUser(null);
+      setShowEditUser(false);
+
+    } catch (err) {
+      console.error('Error updating user:', err);
+      setError(err.message);
+    }
+  };
+
+  // Delete user
+  const deleteUser = async (userId) => {
+    try {
+      if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        return;
+      }
+
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      // Remove from local state
+      const deletedUser = users.find(u => u.id === userId);
+      setUsers(users.filter(u => u.id !== userId));
+      
+      // Update stats
+      setUserStats(prev => ({
+        ...prev,
+        total: prev.total - 1,
+        admins: deletedUser.is_admin ? prev.admins - 1 : prev.admins,
+        active: deletedUser.is_active ? prev.active - 1 : prev.active,
+        verified: deletedUser.email_verified ? prev.verified - 1 : prev.verified,
+        pending: !deletedUser.email_verified ? prev.pending - 1 : prev.pending
+      }));
+
+      setSuccess('User deleted successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError(err.message);
+    }
+  };
+
+  // Toggle user active status
+  const toggleUserActive = async (user) => {
+    try {
+      const newActiveStatus = !user.is_active;
+      await updateUser(user.id, { is_active: newActiveStatus });
+    } catch (err) {
+      console.error('Error toggling user status:', err);
+      setError(err.message);
+    }
+  };
+
+  // Toggle admin status
+  const toggleAdminStatus = async (user) => {
+    try {
+      const newAdminStatus = !user.is_admin;
+      const newRole = newAdminStatus ? 'admin' : 'user';
+      
+      await updateUser(user.id, { 
+        is_admin: newAdminStatus,
+        role: newRole
+      });
+    } catch (err) {
+      console.error('Error toggling admin status:', err);
+      setError(err.message);
+    }
+  };
+
+  // Filter users based on search term
+  const filteredUsers = users.filter(user => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      user.email?.toLowerCase().includes(searchLower) ||
+      user.full_name?.toLowerCase().includes(searchLower) ||
+      user.phone?.toLowerCase().includes(searchLower) ||
+      user.role?.toLowerCase().includes(searchLower)
+    );
+  });
 
   // Render user card
   const renderUserCard = (user) => (
     <div key={user.id} className="user-card">
       <div className="user-header">
         <div className="user-avatar">
-          {user.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+          {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+          {!user.is_active && <div className="inactive-overlay">🚫</div>}
         </div>
         <div className="user-info">
           <div className="user-name-row">
-            <span className="user-name">{user.display_name || user.email}</span>
-            {user.system_management && (
-              <span className="admin-badge">
-                <FaShieldAlt size={12} /> Admin
-              </span>
-            )}
-            {user.id === currentUser?.id && (
-              <span className="current-user-badge">(You)</span>
-            )}
+            <span className="user-name">
+              {user.full_name || user.email}
+              {!user.email_verified && <span className="verification-badge">✉️</span>}
+            </span>
+            <div className="user-badges">
+              {user.is_admin && (
+                <span className="admin-badge">
+                  <FaShieldAlt size={10} /> Admin
+                </span>
+              )}
+              {!user.is_active && (
+                <span className="inactive-badge">
+                  <FaUserTimes size={10} /> Inactive
+                </span>
+              )}
+            </div>
           </div>
           <div className="user-email">
             <FaEnvelope size={12} /> {user.email}
@@ -532,17 +349,21 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
           {user.phone && (
             <div className="user-phone">
               <FaPhone size={12} /> {user.phone}
+              {user.phone_verified && <span className="verified-check">✓</span>}
             </div>
           )}
+          <div className="user-meta">
+            <span className="user-role">
+              Role: <span className={`role-tag ${user.role}`}>{user.role}</span>
+            </span>
+            <span className="user-created">
+              <FaCalendarAlt size={10} /> {new Date(user.created_at).toLocaleDateString()}
+            </span>
+          </div>
         </div>
       </div>
       
       <div className="user-footer">
-        <div className="user-status">
-          <FaCircle size={10} color={user.is_active ? '#10b981' : '#ef4444'} />
-          <span>{user.is_active ? 'Active' : 'Inactive'}</span>
-        </div>
-        
         <div className="user-actions">
           <button 
             className="btn-view"
@@ -551,39 +372,34 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
               setIsModalOpen(true);
             }}
           >
-            <FaEdit size={14} /> View
+            <FaEye size={12} /> View
           </button>
           
-          {user.is_active && user.id !== currentUser?.id ? (
-            <button 
-              className="btn-delete"
-              onClick={() => handleDelete(user)}
-            >
-              <FaTrash size={14} /> Deactivate
-            </button>
-          ) : !user.is_active ? (
-            <button 
-              className="btn-restore"
-              onClick={() => restoreUser(user.id)}
-            >
-              Restore
-            </button>
-          ) : null}
+          <button 
+            className="btn-edit"
+            onClick={() => {
+              setEditUser(user);
+              setShowEditUser(true);
+            }}
+          >
+            <FaEdit size={12} /> Edit
+          </button>
+          
+          <button 
+            className={`btn-status ${user.is_active ? 'active' : 'inactive'}`}
+            onClick={() => toggleUserActive(user)}
+            title={user.is_active ? 'Deactivate User' : 'Activate User'}
+          >
+            {user.is_active ? <FaUnlock size={12} /> : <FaLock size={12} />}
+          </button>
+          
+          <button 
+            className="btn-delete"
+            onClick={() => deleteUser(user.id)}
+          >
+            <FaTrash size={12} />
+          </button>
         </div>
-        
-        {user.id !== currentUser?.id && (
-          <div className="role-selector">
-            <select 
-              value={user.role || 'user'}
-              onChange={(e) => updateUserRole(user.id, e.target.value)}
-              className="role-select"
-            >
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-              <option value="moderator">Moderator</option>
-            </select>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -606,12 +422,50 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
           <FaUser /> User Management
         </h1>
         <div className="subtitle">
-          Total: {users.length} users • Active: {users.filter(u => u.is_active).length}
-          {syncInfo.lastSync && (
-            <span className="sync-time">
-              <FaCheckCircle /> Last sync: {syncInfo.lastSync.toLocaleTimeString()}
-            </span>
-          )}
+          Manage your application users and their permissions
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div className="stat-card total">
+          <div className="stat-icon">
+            <FaUser />
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{userStats.total}</div>
+            <div className="stat-label">Total Users</div>
+          </div>
+        </div>
+        
+        <div className="stat-card admins">
+          <div className="stat-icon">
+            <FaShieldAlt />
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{userStats.admins}</div>
+            <div className="stat-label">Administrators</div>
+          </div>
+        </div>
+        
+        <div className="stat-card active">
+          <div className="stat-icon">
+            <FaUserCheck />
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{userStats.active}</div>
+            <div className="stat-label">Active Users</div>
+          </div>
+        </div>
+        
+        <div className="stat-card verified">
+          <div className="stat-icon">
+            <FaCheckCircle />
+          </div>
+          <div className="stat-content">
+            <div className="stat-value">{userStats.verified}</div>
+            <div className="stat-label">Email Verified</div>
+          </div>
         </div>
       </div>
 
@@ -619,16 +473,16 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
       {syncInfo.message && (
         <div className={`status-bar ${syncInfo.status}`}>
           <div className="status-content">
-            {syncInfo.status === 'syncing' && <FaSync className="spinning" />}
+            {syncInfo.status === 'syncing' && <span className="spinning">⟳</span>}
             {syncInfo.status === 'success' && <FaCheckCircle />}
             {syncInfo.status === 'error' && <FaExclamationTriangle />}
             <span>{syncInfo.message}</span>
+            {syncInfo.lastSync && (
+              <span className="sync-time">
+                Last sync: {syncInfo.lastSync.toLocaleTimeString()}
+              </span>
+            )}
           </div>
-          {syncInfo.status === 'error' && (
-            <button className="btn-help" onClick={showCreateTableSQL}>
-              <FaDatabase /> Fix Database
-            </button>
-          )}
         </div>
       )}
 
@@ -643,47 +497,41 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
         </div>
       )}
 
+      {/* Success Display */}
+      {success && (
+        <div className="success-alert">
+          <FaCheckCircle />
+          <span>{success}</span>
+          <button onClick={() => setSuccess(null)}>
+            <FaTimes />
+          </button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="toolbar">
         <div className="search-box">
           <FaSearch />
           <input
             type="text"
-            placeholder="Search users..."
+            placeholder="Search users by email, name, or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button className="clear-search" onClick={() => setSearchTerm('')}>
+              <FaTimes />
+            </button>
+          )}
         </div>
         
         <div className="toolbar-actions">
           <button 
-            className={`btn-filter ${showInactive ? 'active' : ''}`}
-            onClick={() => setShowInactive(!showInactive)}
+            className="btn-refresh"
+            onClick={loadUsers}
+            disabled={syncInfo.status === 'syncing'}
           >
-            {showInactive ? <FaEyeSlash /> : <FaEye />}
-            {showInactive ? 'Hide Inactive' : 'Show Inactive'}
-          </button>
-          
-          <button 
-            className="btn-sync"
-            onClick={syncFromAuth}
-            disabled={loading}
-          >
-            <FaSync /> Sync from Auth
-          </button>
-          
-          <button 
-            className="btn-check"
-            onClick={checkTable}
-          >
-            Check Table
-          </button>
-          
-          <button 
-            className="btn-create"
-            onClick={showCreateTableSQL}
-          >
-            <FaDatabase /> Create Table
+            <FaSync className={syncInfo.status === 'syncing' ? 'spinning' : ''} /> Refresh
           </button>
           
           <button 
@@ -698,28 +546,47 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
       {/* Users Grid */}
       {filteredUsers.length === 0 ? (
         <div className="empty-state">
-          <FaUser size={60} />
-          <h3>No users found</h3>
-          <p>Try syncing from Auth or check your database setup.</p>
-          <div className="empty-actions">
-            <button className="btn-sync" onClick={syncFromAuth}>
-              <FaSync /> Sync from Auth
-            </button>
-            <button className="btn-create" onClick={showCreateTableSQL}>
-              <FaDatabase /> Setup Database
-            </button>
-          </div>
+          {searchTerm ? (
+            <>
+              <FaSearch size={60} />
+              <h3>No users found</h3>
+              <p>No users match your search criteria</p>
+              <button 
+                className="btn-clear-search"
+                onClick={() => setSearchTerm('')}
+              >
+                Clear Search
+              </button>
+            </>
+          ) : (
+            <>
+              <FaUser size={60} />
+              <h3>No users yet</h3>
+              <p>Start by adding your first user</p>
+              <button 
+                className="btn-add-first"
+                onClick={() => setShowAddUser(true)}
+              >
+                <FaUserPlus /> Add First User
+              </button>
+            </>
+          )}
         </div>
       ) : (
-        <div className="users-grid">
-          {filteredUsers.map(renderUserCard)}
-        </div>
+        <>
+          <div className="users-info">
+            Showing {filteredUsers.length} of {users.length} users
+          </div>
+          <div className="users-grid">
+            {filteredUsers.map(renderUserCard)}
+          </div>
+        </>
       )}
 
       {/* User Detail Modal */}
       {isModalOpen && selectedUser && (
         <div className="modal-overlay">
-          <div className="modal">
+          <div className="modal user-detail-modal">
             <div className="modal-header">
               <h3>User Details</h3>
               <button onClick={() => setIsModalOpen(false)}>
@@ -728,75 +595,89 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
             </div>
             <div className="modal-content">
               <div className="user-avatar-large">
-                {selectedUser.display_name?.[0]?.toUpperCase() || selectedUser.email?.[0]?.toUpperCase() || 'U'}
+                {selectedUser.full_name?.[0]?.toUpperCase() || selectedUser.email?.[0]?.toUpperCase() || 'U'}
+                {!selectedUser.is_active && <div className="inactive-overlay-large">🚫</div>}
               </div>
               
-              <div className="detail-row">
-                <label>Email:</label>
-                <span>{selectedUser.email}</span>
-              </div>
-              
-              <div className="detail-row">
-                <label>Display Name:</label>
-                <span>{selectedUser.display_name || '-'}</span>
-              </div>
-              
-              <div className="detail-row">
-                <label>Phone:</label>
-                <span>{selectedUser.phone || '-'}</span>
-              </div>
-              
-              <div className="detail-row">
-                <label>Role:</label>
-                <span className={`role-badge ${selectedUser.role}`}>
-                  {selectedUser.role}
-                  {selectedUser.system_management && ' (System Management)'}
-                </span>
-              </div>
-              
-              <div className="detail-row">
-                <label>Status:</label>
-                <span className={`status-badge ${selectedUser.is_active ? 'active' : 'inactive'}`}>
-                  <FaCircle size={10} />
-                  {selectedUser.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              
-              <div className="detail-row">
-                <label>User ID:</label>
-                <span className="user-id">{selectedUser.id}</span>
+              <div className="detail-grid">
+                <div className="detail-row">
+                  <label>Email:</label>
+                  <span>
+                    {selectedUser.email}
+                    {selectedUser.email_verified && (
+                      <span className="verified-tag">✓ Verified</span>
+                    )}
+                  </span>
+                </div>
+                
+                <div className="detail-row">
+                  <label>Full Name:</label>
+                  <span>{selectedUser.full_name || '-'}</span>
+                </div>
+                
+                <div className="detail-row">
+                  <label>Phone:</label>
+                  <span>
+                    {selectedUser.phone || '-'}
+                    {selectedUser.phone_verified && (
+                      <span className="verified-tag">✓ Verified</span>
+                    )}
+                  </span>
+                </div>
+                
+                <div className="detail-row">
+                  <label>Role:</label>
+                  <span className={`role-badge ${selectedUser.role} ${selectedUser.is_admin ? 'admin' : ''}`}>
+                    {selectedUser.role} {selectedUser.is_admin && '(Admin)'}
+                  </span>
+                </div>
+                
+                <div className="detail-row">
+                  <label>Status:</label>
+                  <span className={`status-badge ${selectedUser.is_active ? 'active' : 'inactive'}`}>
+                    {selectedUser.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                
+                <div className="detail-row">
+                  <label>Created:</label>
+                  <span>{new Date(selectedUser.created_at).toLocaleString()}</span>
+                </div>
+                
+                <div className="detail-row">
+                  <label>Last Updated:</label>
+                  <span>{new Date(selectedUser.updated_at).toLocaleString()}</span>
+                </div>
+                
+                {selectedUser.verified_at && (
+                  <div className="detail-row">
+                    <label>Verified At:</label>
+                    <span>{new Date(selectedUser.verified_at).toLocaleString()}</span>
+                  </div>
+                )}
+                
+                <div className="detail-row">
+                  <label>User ID:</label>
+                  <span className="user-id">{selectedUser.id}</span>
+                </div>
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn-close" onClick={() => setIsModalOpen(false)}>
+              <button 
+                className="btn-edit-modal"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditUser(selectedUser);
+                  setShowEditUser(true);
+                }}
+              >
+                <FaEdit /> Edit User
+              </button>
+              <button 
+                className="btn-close-modal" 
+                onClick={() => setIsModalOpen(false)}
+              >
                 Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && userToDelete && (
-        <div className="modal-overlay">
-          <div className="modal confirm-modal">
-            <div className="modal-header">
-              <h3>Confirm Deactivation</h3>
-              <button onClick={() => setShowDeleteConfirm(false)}>
-                <FaTimes />
-              </button>
-            </div>
-            <div className="modal-content">
-              <FaExclamationTriangle size={40} color="#ef4444" />
-              <p>Are you sure you want to deactivate this user?</p>
-              <p className="user-to-delete">{userToDelete.email}</p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setShowDeleteConfirm(false)}>
-                Cancel
-              </button>
-              <button className="btn-confirm" onClick={confirmDelete}>
-                Deactivate
               </button>
             </div>
           </div>
@@ -815,20 +696,22 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
             </div>
             <div className="modal-content">
               {error && (
-                <div className="error-alert">
+                <div className="error-alert-modal">
                   <FaExclamationTriangle />
                   <span>{error}</span>
                 </div>
               )}
               
               <div className="form-group">
-                <label>Email *</label>
+                <label>Email Address *</label>
                 <input
                   type="email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({...newUser, email: e.target.value})}
                   placeholder="user@example.com"
+                  required
                 />
+                <div className="form-hint">Required. Must be a valid email address.</div>
               </div>
               
               <div className="form-group">
@@ -842,42 +725,178 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
               </div>
               
               <div className="form-group">
-                <label>Phone</label>
+                <label>Phone Number</label>
                 <input
                   type="tel"
                   value={newUser.phone}
                   onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
-                  placeholder="Optional"
+                  placeholder="Optional (e.g., +1234567890)"
                 />
               </div>
               
               <div className="form-group">
-                <label>Password (for Auth)</label>
-                <input
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                  placeholder="Min 6 characters"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={newUser.system_management}
-                    onChange={(e) => setNewUser({...newUser, system_management: e.target.checked})}
-                  />
-                  <span>System Management (Admin)</span>
-                </label>
+                <label>Role</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                  className="role-select"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Administrator</option>
+                  <option value="manager">Manager</option>
+                  <option value="staff">Staff</option>
+                </select>
+                <div className="form-hint">Administrators have full system access.</div>
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setShowAddUser(false)}>
+              <button 
+                className="btn-cancel" 
+                onClick={() => setShowAddUser(false)}
+              >
                 Cancel
               </button>
-              <button className="btn-confirm" onClick={createUser}>
-                Add User
+              <button 
+                className="btn-confirm" 
+                onClick={createUser}
+              >
+                Create User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditUser && editUser && (
+        <div className="modal-overlay">
+          <div className="modal edit-user-modal">
+            <div className="modal-header">
+              <h3>Edit User</h3>
+              <button onClick={() => setShowEditUser(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-content">
+              <div className="form-group">
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  value={editUser.email}
+                  onChange={(e) => setEditUser({...editUser, email: e.target.value})}
+                  disabled
+                />
+                <div className="form-hint">Email cannot be changed.</div>
+              </div>
+              
+              <div className="form-group">
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  value={editUser.full_name || ''}
+                  onChange={(e) => setEditUser({...editUser, full_name: e.target.value})}
+                  placeholder="Full name"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Phone Number</label>
+                <input
+                  type="tel"
+                  value={editUser.phone || ''}
+                  onChange={(e) => setEditUser({...editUser, phone: e.target.value})}
+                  placeholder="Phone number"
+                />
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Role</label>
+                  <select
+                    value={editUser.role}
+                    onChange={(e) => setEditUser({...editUser, role: e.target.value})}
+                    className="role-select"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Administrator</option>
+                    <option value="manager">Manager</option>
+                    <option value="staff">Staff</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Admin Status</label>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="admin-toggle"
+                      checked={editUser.is_admin}
+                      onChange={(e) => setEditUser({...editUser, is_admin: e.target.checked})}
+                    />
+                    <label htmlFor="admin-toggle" className="toggle-label">
+                      {editUser.is_admin ? 'Admin User' : 'Regular User'}
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Account Status</label>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="active-toggle"
+                      checked={editUser.is_active}
+                      onChange={(e) => setEditUser({...editUser, is_active: e.target.checked})}
+                    />
+                    <label htmlFor="active-toggle" className="toggle-label">
+                      {editUser.is_active ? 'Active' : 'Inactive'}
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="form-group">
+                  <label>Email Verified</label>
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="email-verified-toggle"
+                      checked={editUser.email_verified}
+                      onChange={(e) => setEditUser({...editUser, email_verified: e.target.checked})}
+                    />
+                    <label htmlFor="email-verified-toggle" className="toggle-label">
+                      {editUser.email_verified ? 'Verified' : 'Unverified'}
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn-cancel" 
+                onClick={() => setShowEditUser(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-delete-modal"
+                onClick={() => deleteUser(editUser.id)}
+              >
+                <FaTrash /> Delete User
+              </button>
+              <button 
+                className="btn-confirm" 
+                onClick={() => updateUser(editUser.id, {
+                  full_name: editUser.full_name,
+                  phone: editUser.phone,
+                  role: editUser.role,
+                  is_admin: editUser.is_admin,
+                  is_active: editUser.is_active,
+                  email_verified: editUser.email_verified
+                })}
+              >
+                Save Changes
               </button>
             </div>
           </div>
@@ -890,6 +909,9 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
           padding: 24px;
           max-width: 1400px;
           margin: 0 auto;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #f8fafc;
+          min-height: 100vh;
         }
 
         .loading-container {
@@ -912,164 +934,266 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
         .loading-text {
           margin-top: 16px;
           color: #6b7280;
+          font-size: 14px;
         }
 
         .header {
           margin-bottom: 24px;
+          text-align: center;
         }
 
         .header h1 {
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 12px;
           color: #1f2937;
           margin: 0 0 8px 0;
+          font-size: 32px;
+          font-weight: 700;
         }
 
         .subtitle {
           color: #6b7280;
-          display: flex;
-          align-items: center;
-          gap: 12px;
+          font-size: 16px;
         }
 
-        .sync-time {
+        /* Stats Grid */
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 20px;
+          margin-bottom: 30px;
+        }
+
+        .stat-card {
+          background: white;
+          border-radius: 12px;
+          padding: 24px;
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+          transform: translateY(-2px);
+        }
+
+        .stat-card.total { border-left: 4px solid #0077b6; }
+        .stat-card.admins { border-left: 4px solid #dc2626; }
+        .stat-card.active { border-left: 4px solid #10b981; }
+        .stat-card.verified { border-left: 4px solid #f59e0b; }
+
+        .stat-icon {
+          width: 56px;
+          height: 56px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          color: white;
+        }
+
+        .total .stat-icon { background: #0077b6; }
+        .admins .stat-icon { background: #dc2626; }
+        .active .stat-icon { background: #10b981; }
+        .verified .stat-icon { background: #f59e0b; }
+
+        .stat-content {
+          flex: 1;
+        }
+
+        .stat-value {
+          font-size: 28px;
+          font-weight: 700;
+          color: #1f2937;
+          margin-bottom: 4px;
+        }
+
+        .stat-label {
           font-size: 14px;
-          color: #10b981;
-          display: flex;
-          align-items: center;
-          gap: 6px;
+          color: #6b7280;
         }
 
+        /* Status Bar */
         .status-bar {
-          padding: 12px 16px;
+          padding: 12px 20px;
           border-radius: 8px;
           margin-bottom: 20px;
           display: flex;
           justify-content: space-between;
           align-items: center;
+          font-size: 14px;
         }
 
         .status-bar.syncing {
           background: #e0f2fe;
           color: #0369a1;
+          border: 1px solid #bae6fd;
         }
 
         .status-bar.success {
           background: #d1fae5;
           color: #065f46;
+          border: 1px solid #a7f3d0;
         }
 
         .status-bar.error {
           background: #fee2e2;
           color: #dc2626;
-        }
-
-        .status-bar.warning {
-          background: #fef3c7;
-          color: #92400e;
+          border: 1px solid #fecaca;
         }
 
         .status-content {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
+          flex: 1;
+        }
+
+        .sync-time {
+          margin-left: auto;
+          font-size: 13px;
+          opacity: 0.8;
+        }
+
+        .spinning {
+          animation: spin 1s linear infinite;
+        }
+
+        /* Alerts */
+        .error-alert, .success-alert {
+          padding: 16px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 20px;
+          font-size: 14px;
+          font-weight: 500;
         }
 
         .error-alert {
           background: #fee2e2;
-          border: 1px solid #fca5a5;
-          border-radius: 8px;
-          padding: 12px 16px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 20px;
           color: #dc2626;
+          border: 1px solid #fecaca;
         }
 
-        .error-alert button {
+        .success-alert {
+          background: #d1fae5;
+          color: #065f46;
+          border: 1px solid #a7f3d0;
+        }
+
+        .error-alert button, .success-alert button {
           margin-left: auto;
           background: none;
           border: none;
           cursor: pointer;
-          color: #dc2626;
+          padding: 4px;
+          opacity: 0.7;
+          transition: opacity 0.2s;
         }
 
+        .error-alert button:hover, .success-alert button:hover {
+          opacity: 1;
+        }
+
+        /* Toolbar */
         .toolbar {
-          background: #f8fafc;
-          border-radius: 8px;
-          padding: 16px;
+          background: white;
+          border-radius: 12px;
+          padding: 20px;
           margin-bottom: 24px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 20px;
+          flex-wrap: wrap;
         }
 
         .search-box {
+          flex: 1;
+          min-width: 300px;
           display: flex;
           align-items: center;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-          padding: 0 12px;
-          margin-bottom: 16px;
+          background: #f8fafc;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 0 16px;
+          transition: border-color 0.2s;
+        }
+
+        .search-box:focus-within {
+          border-color: #0077b6;
         }
 
         .search-box input {
           flex: 1;
-          padding: 12px;
+          padding: 14px 12px;
           border: none;
           background: none;
           outline: none;
-          font-size: 16px;
+          font-size: 15px;
+          color: #374151;
+        }
+
+        .clear-search {
+          background: none;
+          border: none;
+          color: #94a3b8;
+          cursor: pointer;
+          padding: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .clear-search:hover {
+          color: #64748b;
         }
 
         .toolbar-actions {
           display: flex;
-          gap: 10px;
+          gap: 12px;
           flex-wrap: wrap;
         }
 
         button {
-          padding: 10px 16px;
-          border-radius: 6px;
+          padding: 12px 20px;
+          border-radius: 8px;
           border: none;
           cursor: pointer;
-          font-weight: 500;
+          font-weight: 600;
+          font-size: 14px;
           display: flex;
           align-items: center;
           gap: 8px;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
+          min-height: 44px;
+        }
+
+        button:hover:not(:disabled) {
+          transform: translateY(-1px);
         }
 
         button:disabled {
-          opacity: 0.5;
+          opacity: 0.6;
           cursor: not-allowed;
         }
 
-        .btn-filter {
-          background: white;
+        .btn-refresh {
+          background: #f3f4f6;
+          color: #374151;
           border: 1px solid #d1d5db;
-          color: #6b7280;
         }
 
-        .btn-filter.active {
-          background: #e0f2fe;
-          border-color: #0077b6;
-          color: #0077b6;
-        }
-
-        .btn-sync {
-          background: #10b981;
-          color: white;
-        }
-
-        .btn-check {
-          background: #6b7280;
-          color: white;
-        }
-
-        .btn-create {
-          background: #f59e0b;
-          color: white;
+        .btn-refresh:hover:not(:disabled) {
+          background: #e5e7eb;
         }
 
         .btn-add {
@@ -1077,149 +1201,284 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
           color: white;
         }
 
-        .btn-help {
-          background: #8b5cf6;
-          color: white;
+        .btn-add:hover {
+          background: #005a8c;
         }
 
-        .empty-state {
-          text-align: center;
-          padding: 60px 20px;
-          color: #6b7280;
+        /* Users Info */
+        .users-info {
+          font-size: 14px;
+          color: #64748b;
+          margin-bottom: 16px;
+          padding: 0 8px;
         }
 
-        .empty-actions {
-          display: flex;
-          gap: 12px;
-          justify-content: center;
-          margin-top: 24px;
-        }
-
+        /* Users Grid */
         .users-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+          gap: 24px;
+          margin-bottom: 40px;
         }
 
         .user-card {
           background: white;
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
           border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          padding: 20px;
-          transition: all 0.2s;
+          transition: all 0.3s ease;
         }
 
         .user-card:hover {
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+          transform: translateY(-4px);
         }
 
         .user-header {
           display: flex;
-          gap: 12px;
-          margin-bottom: 16px;
+          gap: 20px;
+          margin-bottom: 20px;
         }
 
         .user-avatar {
-          width: 48px;
-          height: 48px;
+          width: 64px;
+          height: 64px;
           border-radius: 50%;
-          background: #0077b6;
+          background: linear-gradient(135deg, #0077b6, #00b4d8);
           color: white;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 18px;
+          font-size: 24px;
           font-weight: bold;
+          flex-shrink: 0;
+          position: relative;
+        }
+
+        .inactive-overlay {
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          background: #dc2626;
+          color: white;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          border: 2px solid white;
         }
 
         .user-info {
           flex: 1;
+          min-width: 0;
         }
 
         .user-name-row {
           display: flex;
           align-items: center;
           gap: 8px;
-          margin-bottom: 4px;
+          margin-bottom: 8px;
+          flex-wrap: wrap;
         }
 
         .user-name {
-          font-weight: 600;
+          font-weight: 700;
           color: #1f2937;
+          font-size: 18px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .verification-badge {
+          font-size: 12px;
+          opacity: 0.7;
+        }
+
+        .user-badges {
+          display: flex;
+          gap: 6px;
+          margin-left: auto;
+        }
+
+        .admin-badge, .inactive-badge {
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-weight: 600;
         }
 
         .admin-badge {
           background: #fee2e2;
           color: #dc2626;
-          padding: 2px 8px;
-          border-radius: 12px;
-          font-size: 12px;
-          display: flex;
-          align-items: center;
-          gap: 4px;
         }
 
-        .current-user-badge {
-          color: #0077b6;
-          font-size: 12px;
+        .inactive-badge {
+          background: #f3f4f6;
+          color: #6b7280;
         }
 
         .user-email, .user-phone {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           font-size: 14px;
           color: #6b7280;
-          margin-top: 4px;
+          margin-bottom: 4px;
         }
+
+        .verified-check {
+          color: #10b981;
+          font-weight: bold;
+          margin-left: 4px;
+        }
+
+        .user-meta {
+          display: flex;
+          gap: 16px;
+          margin-top: 12px;
+          font-size: 13px;
+        }
+
+        .user-role {
+          color: #6b7280;
+        }
+
+        .user-created {
+          color: #9ca3af;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .role-tag {
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          margin-left: 6px;
+        }
+
+        .role-tag.user { background: #e0f2fe; color: #0369a1; }
+        .role-tag.admin { background: #fee2e2; color: #dc2626; }
+        .role-tag.manager { background: #fef3c7; color: #92400e; }
+        .role-tag.staff { background: #d1fae5; color: #065f46; }
 
         .user-footer {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .user-status {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 14px;
-          color: #6b7280;
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 1px solid #f3f4f6;
         }
 
         .user-actions {
           display: flex;
           gap: 8px;
+          align-items: center;
+        }
+
+        .btn-view, .btn-edit, .btn-status, .btn-delete {
+          padding: 10px 16px;
+          font-size: 13px;
+          font-weight: 600;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
 
         .btn-view {
           background: #10b981;
           color: white;
-          padding: 6px 12px;
-          font-size: 14px;
+        }
+
+        .btn-view:hover {
+          background: #0da271;
+        }
+
+        .btn-edit {
+          background: #3b82f6;
+          color: white;
+        }
+
+        .btn-edit:hover {
+          background: #2563eb;
+        }
+
+        .btn-status {
+          background: #f3f4f6;
+          color: #374151;
+        }
+
+        .btn-status:hover {
+          background: #e5e7eb;
+        }
+
+        .btn-status.active:hover {
+          background: #fecaca;
+          color: #dc2626;
+        }
+
+        .btn-status.inactive:hover {
+          background: #bbf7d0;
+          color: #065f46;
         }
 
         .btn-delete {
           background: #ef4444;
           color: white;
-          padding: 6px 12px;
-          font-size: 14px;
         }
 
-        .btn-restore {
-          background: #3b82f6;
+        .btn-delete:hover {
+          background: #dc2626;
+        }
+
+        /* Empty State */
+        .empty-state {
+          text-align: center;
+          padding: 80px 40px;
+          color: #6b7280;
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          margin-top: 20px;
+        }
+
+        .empty-state h3 {
+          margin: 20px 0 12px;
+          color: #374151;
+          font-size: 24px;
+        }
+
+        .empty-state p {
+          color: #9ca3af;
+          font-size: 16px;
+          margin-bottom: 30px;
+        }
+
+        .btn-clear-search, .btn-add-first {
+          background: #0077b6;
           color: white;
-          padding: 6px 12px;
-          font-size: 14px;
+          padding: 14px 28px;
+          font-size: 16px;
+          border-radius: 10px;
+          margin: 0 auto;
         }
 
-        .role-select {
-          padding: 6px 10px;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          font-size: 14px;
+        .btn-clear-search:hover, .btn-add-first:hover {
+          background: #005a8c;
         }
 
+        /* Modal Styles */
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -1231,170 +1490,392 @@ INSERT INTO public.users (uid, email, display_name, phone, system_management) VA
           align-items: center;
           justify-content: center;
           z-index: 1000;
+          padding: 20px;
+          backdrop-filter: blur(4px);
         }
 
         .modal {
           background: white;
-          border-radius: 12px;
+          border-radius: 20px;
           max-width: 500px;
-          width: 90%;
-          max-height: 80vh;
+          width: 100%;
+          max-height: 90vh;
           overflow: hidden;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+          animation: modalFadeIn 0.3s ease;
+        }
+
+        .user-detail-modal, .add-user-modal, .edit-user-modal {
+          max-width: 600px;
         }
 
         .modal-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 20px;
+          padding: 28px 32px;
           border-bottom: 1px solid #e5e7eb;
+          background: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
+          color: white;
         }
 
         .modal-header h3 {
           margin: 0;
-          color: #1f2937;
+          font-size: 22px;
+          font-weight: 700;
         }
 
         .modal-header button {
-          background: none;
+          background: rgba(255,255,255,0.2);
+          color: white;
           border: none;
-          color: #6b7280;
-          padding: 4px;
+          padding: 10px;
+          border-radius: 8px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s;
+        }
+
+        .modal-header button:hover {
+          background: rgba(255,255,255,0.3);
         }
 
         .modal-content {
-          padding: 20px;
-          max-height: 60vh;
+          padding: 32px;
+          max-height: calc(90vh - 140px);
           overflow-y: auto;
         }
 
-        .modal-footer {
-          padding: 20px;
-          border-top: 1px solid #e5e7eb;
-          display: flex;
-          justify-content: flex-end;
-          gap: 12px;
-        }
-
-        .btn-close, .btn-cancel {
-          background: #6b7280;
-          color: white;
-        }
-
-        .btn-confirm {
-          background: #0077b6;
-          color: white;
-        }
-
         .user-avatar-large {
-          width: 80px;
-          height: 80px;
+          width: 100px;
+          height: 100px;
           border-radius: 50%;
-          background: #0077b6;
+          background: linear-gradient(135deg, #0077b6, #00b4d8);
           color: white;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 32px;
+          font-size: 40px;
           font-weight: bold;
-          margin: 0 auto 20px;
+          margin: 0 auto 32px;
+          position: relative;
+        }
+
+        .inactive-overlay-large {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          background: #dc2626;
+          color: white;
+          border-radius: 50%;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          border: 3px solid white;
+        }
+
+        .detail-grid {
+          display: grid;
+          gap: 16px;
         }
 
         .detail-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 12px 0;
+          display: grid;
+          grid-template-columns: 140px 1fr;
+          gap: 20px;
+          padding: 16px 0;
           border-bottom: 1px solid #f3f4f6;
+          align-items: center;
+        }
+
+        .detail-row:last-child {
+          border-bottom: none;
         }
 
         .detail-row label {
           font-weight: 600;
           color: #374151;
+          font-size: 14px;
         }
 
         .detail-row span {
           color: #6b7280;
+          font-size: 15px;
+          word-break: break-word;
         }
 
-        .role-badge {
-          background: #e0f2fe;
-          color: #0369a1;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-        }
-
-        .status-badge {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .status-badge.active {
+        .verified-tag {
+          background: #d1fae5;
           color: #065f46;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          margin-left: 10px;
         }
 
-        .status-badge.inactive {
-          color: #991b1b;
+        .role-badge, .status-badge {
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          display: inline-block;
         }
+
+        .role-badge.user { background: #e0f2fe; color: #0369a1; }
+        .role-badge.admin { background: #fee2e2; color: #dc2626; }
+        .role-badge.manager { background: #fef3c7; color: #92400e; }
+        .role-badge.staff { background: #d1fae5; color: #065f46; }
+
+        .status-badge.active { background: #d1fae5; color: #065f46; }
+        .status-badge.inactive { background: #fee2e2; color: #dc2626; }
 
         .user-id {
-          font-family: monospace;
+          font-family: 'Monaco', 'Consolas', monospace;
           font-size: 12px;
           background: #f3f4f6;
-          padding: 4px 8px;
-          border-radius: 4px;
+          padding: 10px;
+          border-radius: 6px;
+          color: #6b7280;
+          display: block;
           word-break: break-all;
         }
 
-        .confirm-modal .modal-content {
-          text-align: center;
+        .modal-footer {
+          padding: 24px 32px;
+          border-top: 1px solid #e5e7eb;
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          background: #f8fafc;
         }
 
-        .user-to-delete {
-          font-weight: 600;
-          color: #1f2937;
-          margin-top: 12px;
+        .btn-close-modal, .btn-cancel {
+          background: #6b7280;
+          color: white;
         }
 
+        .btn-close-modal:hover, .btn-cancel:hover {
+          background: #4b5563;
+        }
+
+        .btn-edit-modal, .btn-confirm {
+          background: #0077b6;
+          color: white;
+        }
+
+        .btn-edit-modal:hover, .btn-confirm:hover {
+          background: #005a8c;
+        }
+
+        .btn-delete-modal {
+          background: #ef4444;
+          color: white;
+        }
+
+        .btn-delete-modal:hover {
+          background: #dc2626;
+        }
+
+        /* Form Styles */
         .form-group {
-          margin-bottom: 16px;
+          margin-bottom: 24px;
+        }
+
+        .form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 24px;
         }
 
         .form-group label {
           display: block;
-          margin-bottom: 6px;
+          margin-bottom: 8px;
           font-weight: 600;
           color: #374151;
+          font-size: 14px;
         }
 
-        .form-group input {
+        .form-group input,
+        .form-group select {
           width: 100%;
-          padding: 10px;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          font-size: 16px;
+          padding: 14px;
+          border: 2px solid #e5e7eb;
+          border-radius: 10px;
+          font-size: 15px;
+          color: #374151;
+          background: white;
+          transition: all 0.2s;
         }
 
-        .checkbox-label {
+        .form-group input:focus,
+        .form-group select:focus {
+          outline: none;
+          border-color: #0077b6;
+          box-shadow: 0 0 0 4px rgba(0, 119, 182, 0.1);
+        }
+
+        .form-group input:disabled {
+          background: #f3f4f6;
+          cursor: not-allowed;
+        }
+
+        .form-hint {
+          font-size: 13px;
+          color: #9ca3af;
+          margin-top: 6px;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
           display: flex;
           align-items: center;
-          gap: 8px;
-          font-weight: normal;
+          gap: 12px;
+        }
+
+        .toggle-switch input[type="checkbox"] {
+          display: none;
+        }
+
+        .toggle-switch input[type="checkbox"] + .toggle-label {
+          position: relative;
+          padding-left: 60px;
           cursor: pointer;
+          display: inline-block;
+          height: 34px;
+          line-height: 34px;
         }
 
-        .checkbox-label input {
-          width: auto;
+        .toggle-switch input[type="checkbox"] + .toggle-label:before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 56px;
+          height: 34px;
+          background: #d1d5db;
+          border-radius: 17px;
+          transition: background 0.2s;
         }
 
+        .toggle-switch input[type="checkbox"] + .toggle-label:after {
+          content: '';
+          position: absolute;
+          left: 4px;
+          top: 4px;
+          width: 26px;
+          height: 26px;
+          background: white;
+          border-radius: 13px;
+          transition: transform 0.2s;
+        }
+
+        .toggle-switch input[type="checkbox"]:checked + .toggle-label:before {
+          background: #0077b6;
+        }
+
+        .toggle-switch input[type="checkbox"]:checked + .toggle-label:after {
+          transform: translateX(22px);
+        }
+
+        /* Animations */
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
 
-        .spinning {
-          animation: spin 1s linear infinite;
+        @keyframes modalFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .users-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .stats-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          
+          .form-row {
+            grid-template-columns: 1fr;
+          }
+          
+          .detail-row {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+          
+          .toolbar {
+            flex-direction: column;
+            gap: 16px;
+          }
+          
+          .search-box {
+            min-width: 100%;
+          }
+          
+          .user-card {
+            padding: 20px;
+          }
+          
+          .user-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 16px;
+          }
+          
+          .user-avatar {
+            margin: 0 auto;
+          }
+          
+          .user-badges {
+            justify-content: center;
+            margin: 8px 0 0;
+          }
+          
+          .user-meta {
+            flex-direction: column;
+            gap: 8px;
+            text-align: center;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .stats-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .modal {
+            margin: 10px;
+            max-height: 95vh;
+          }
+          
+          .modal-content {
+            padding: 20px;
+          }
+          
+          .modal-footer {
+            flex-direction: column;
+          }
+          
+          .modal-footer button {
+            width: 100%;
+          }
         }
       `}</style>
     </div>

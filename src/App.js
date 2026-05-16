@@ -6,9 +6,10 @@ import Dashboard from './admin/Dashboard'
 import ProtectedRoute from './admin/ProtectedRoute'
 import { supabase } from './supabase'
 
-function App() {
-  
+// Import your logo from src/assets
+import logo from './assets/logo.png'
 
+function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -21,11 +22,12 @@ function App() {
 
     getSession()
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null)
+      setLoading(false)
     })
 
-    return () => listener.subscription.unsubscribe()
+    return () => subscription.unsubscribe()
   }, [])
 
   if (loading) {
@@ -40,6 +42,20 @@ function App() {
         color: 'white'
       }}>
         <div style={{ textAlign: 'center' }}>
+          {/* Logo from src/assets */}
+          <div style={{ marginBottom: '20px' }}>
+            <img 
+              src={logo} 
+              alt="Tropics Pools Logo" 
+              style={{ 
+                width: '120px', 
+                height: 'auto',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+              }} 
+            />
+          </div>
+          
           <div style={{
             width: '50px',
             height: '50px',
@@ -49,7 +65,16 @@ function App() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 20px'
           }}></div>
-          <p>Tropics Pools Information Management System </p>
+          <p style={{ fontSize: '18px', fontWeight: '500' }}>
+            Tropics Pools Information Management System
+          </p>
+          <style>
+            {`
+              @keyframes spin {
+                to { transform: rotate(360deg); }
+              }
+            `}
+          </style>
         </div>
       </div>
     )

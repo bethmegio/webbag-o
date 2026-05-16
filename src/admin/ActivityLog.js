@@ -1,13 +1,18 @@
-// ActivityLog.js - WITHOUT FILTERS & CONTROLS SECTION
+// ActivityLog.js - ADMIN VERSION (Enhanced)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { 
   FaHistory, FaUser, FaShoppingBag, FaCalendarAlt, FaBoxOpen,
   FaCog, FaSearch, FaFilter, FaTrash, FaDownload, FaEye,
   FaInfoCircle, FaExclamationTriangle, FaTimesCircle, FaSync, FaPlus,
-  FaCheckCircle, FaExclamationCircle, FaUserCircle, FaTimes
+  FaCheckCircle, FaExclamationCircle, FaUserCircle, FaTimes,
+  FaChartLine, FaStore, FaMobileAlt, FaTools, FaShieldAlt,
+  FaFileInvoice, FaCreditCard, FaTruck, FaMapMarkerAlt,
+  FaShoppingCart, FaTag, FaEnvelope, FaPhone, FaMoneyBill,
+  FaStar, FaThumbsUp, FaThumbsDown, FaComments, FaBell
 } from 'react-icons/fa';
 
+// Activity logging function - Enhanced for both admin and app
 export const logActivity = async (activityData) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -26,37 +31,103 @@ export const logActivity = async (activityData) => {
       .from('activity_logs')
       .insert(activity);
 
-    return !error;
+    if (error) {
+      console.error('Error logging activity:', error);
+      return false;
+    }
+
+    return true;
   } catch (error) {
     console.error('Error in logActivity:', error);
     return false;
   }
 };
 
+// Activity Types for both admin and app
 export const ActivityTypes = {
+  // User Activities
   USER_LOGIN: 'user_login',
   USER_LOGOUT: 'user_logout',
-  USER_CREATE: 'user_create',
-  USER_UPDATE: 'user_update',
-  USER_DELETE: 'user_delete',
-  ORDER_CREATE: 'order_create',
-  ORDER_UPDATE: 'order_update',
-  ORDER_DELETE: 'order_delete',
-  ORDER_APPROVE: 'order_approve',
-  ORDER_REJECT: 'order_reject',
+  USER_REGISTER: 'user_register',
+  USER_PROFILE_UPDATE: 'user_profile_update',
+  USER_PASSWORD_CHANGE: 'user_password_change',
+  
+  // Admin Activities
+  ADMIN_LOGIN: 'admin_login',
+  ADMIN_DASHBOARD_ACCESS: 'admin_dashboard_access',
+  ADMIN_SETTINGS_UPDATE: 'admin_settings_update',
+  ADMIN_REPORT_VIEW: 'admin_report_view',
+  
+  // Product Activities
+  PRODUCT_VIEW: 'product_view',
   PRODUCT_CREATE: 'product_create',
   PRODUCT_UPDATE: 'product_update',
   PRODUCT_DELETE: 'product_delete',
+  PRODUCT_REVIEW_CREATE: 'product_review_create',
+  
+  // Order Activities
+  ORDER_CREATE: 'order_create',
+  ORDER_UPDATE: 'order_update',
+  ORDER_DELETE: 'order_delete',
+  ORDER_STATUS_CHANGE: 'order_status_change',
+  ORDER_PAYMENT_SUCCESS: 'order_payment_success',
+  ORDER_PAYMENT_FAILED: 'order_payment_failed',
+  
+  // Booking Activities
   BOOKING_CREATE: 'booking_create',
   BOOKING_UPDATE: 'booking_update',
   BOOKING_DELETE: 'booking_delete',
   BOOKING_CONFIRM: 'booking_confirm',
   BOOKING_CANCEL: 'booking_cancel',
+  BOOKING_COMPLETE: 'booking_complete',
+  
+  // Cart Activities
+  CART_ADD_ITEM: 'cart_add_item',
+  CART_REMOVE_ITEM: 'cart_remove_item',
+  CART_UPDATE_ITEM: 'cart_update_item',
+  CART_CLEAR: 'cart_clear',
+  CART_CHECKOUT: 'cart_checkout',
+  
+  // Service Activities
+  SERVICE_VIEW: 'service_view',
+  SERVICE_BOOKING: 'service_booking',
+  SERVICE_REVIEW_CREATE: 'service_review_create',
+  
+  // System Activities
+  SYSTEM_BACKUP: 'system_backup',
+  SYSTEM_UPDATE: 'system_update',
+  REPORT_GENERATED: 'report_generated',
+  ERROR_OCCURRED: 'error_occurred',
+  
+  // Inventory Activities
   INVENTORY_UPDATE: 'inventory_update',
   STOCK_ADJUSTMENT: 'stock_adjustment',
-  SETTINGS_UPDATE: 'system_settings_update',
-  BACKUP_CREATED: 'backup_created',
-  REPORT_GENERATED: 'report_generated'
+  LOW_STOCK_ALERT: 'low_stock_alert',
+  
+  // Payment Activities
+  PAYMENT_PROCESSED: 'payment_processed',
+  REFUND_ISSUED: 'refund_issued',
+  PAYMENT_METHOD_ADDED: 'payment_method_added',
+  
+  // Shipping Activities
+  ORDER_SHIPPED: 'order_shipped',
+  ORDER_DELIVERED: 'order_delivered',
+  TRACKING_UPDATE: 'tracking_update',
+  
+  // Marketing Activities
+  NEWSLETTER_SUBSCRIBE: 'newsletter_subscribe',
+  PROMOTION_APPLIED: 'promotion_applied',
+  COUPON_USED: 'coupon_used',
+  
+  // Review Activities
+  REVIEW_APPROVED: 'review_approved',
+  REVIEW_REJECTED: 'review_rejected',
+  REVIEW_DELETED: 'review_deleted',
+  
+  // Notification Activities
+  NOTIFICATION_SENT: 'notification_sent',
+  EMAIL_SENT: 'email_sent',
+  SMS_SENT: 'sms_sent'
 };
 
 const ActivityLog = () => {
@@ -76,6 +147,39 @@ const ActivityLog = () => {
   const [error, setError] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user is admin
+  useEffect(() => {
+    checkAdminStatus();
+  }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check if user exists in user_roles table with admin role
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (userRole?.role === 'admin') {
+        setIsAdmin(true);
+      } else {
+        // Fallback: check if user has admin email pattern
+        const adminEmails = ['admin@', 'administrator@', 'superadmin@'];
+        if (adminEmails.some(pattern => user.email?.includes(pattern))) {
+          setIsAdmin(true);
+        }
+      }
+    } catch (error) {
+      console.log('Admin check error:', error);
+    }
+  };
 
   const filterActivities = useCallback(() => {
     let filtered = [...activities];
@@ -86,6 +190,7 @@ const ActivityLog = () => {
         activity.description?.toLowerCase().includes(term) ||
         activity.activity_type?.toLowerCase().includes(term) ||
         activity.metadata?.details?.toLowerCase().includes(term) ||
+        activity.user_agent?.toLowerCase().includes(term) ||
         (activity.user_id && users.find(u => u.id === activity.user_id)?.email?.toLowerCase().includes(term)) ||
         (activity.user_id && users.find(u => u.id === activity.user_id)?.name?.toLowerCase().includes(term))
       );
@@ -98,6 +203,11 @@ const ActivityLog = () => {
     if (userFilter !== 'all') {
       if (userFilter === 'system') {
         filtered = filtered.filter(activity => !activity.user_id);
+      } else if (userFilter === 'admin') {
+        filtered = filtered.filter(activity => {
+          const user = users.find(u => u.id === activity.user_id);
+          return user?.is_admin || user?.role === 'admin';
+        });
       } else {
         filtered = filtered.filter(activity => activity.user_id === userFilter);
       }
@@ -189,40 +299,48 @@ const ActivityLog = () => {
     try {
       const { data: publicUsers, error: publicError } = await supabase
         .from('users')
-        .select('id, email, full_name')
+        .select('id, email, full_name, phone, avatar_url')
         .order('email');
 
       if (!publicError && publicUsers) {
+        // Check user_roles table for admin status
+        const { data: userRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id, role');
+
+        const userRolesMap = {};
+        if (!rolesError && userRoles) {
+          userRoles.forEach(ur => {
+            userRolesMap[ur.user_id] = ur.role;
+          });
+        }
+
         const transformedUsers = publicUsers.map(user => ({
           id: user.id,
           email: user.email,
-          name: user.full_name || user.email.split('@')[0]
+          name: user.full_name || user.email?.split('@')[0] || 'User',
+          phone: user.phone,
+          avatar_url: user.avatar_url,
+          role: userRolesMap[user.id] || 'user',
+          is_admin: userRolesMap[user.id] === 'admin'
         }));
         
         setUsers(transformedUsers);
       } else {
-        // Fallback to auth users if public.users table doesn't exist
+        // Fallback to auth users
         const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
         
         if (!authError && authUsers) {
           const transformedUsers = authUsers.map(user => ({
             id: user.id,
             email: user.email,
-            name: user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown'
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+            role: 'user',
+            is_admin: user.email?.includes('admin@') || false
           }));
           setUsers(transformedUsers);
         } else {
-          // Last resort: get current user
-          const { data: { user: currentUser } } = await supabase.auth.getUser();
-          if (currentUser) {
-            setUsers([{
-              id: currentUser.id,
-              email: currentUser.email,
-              name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Unknown'
-            }]);
-          } else {
-            setUsers([]);
-          }
+          setUsers([]);
         }
       }
 
@@ -233,25 +351,43 @@ const ActivityLog = () => {
   };
 
   const getActivityIcon = (type) => {
-    if (!type) return <FaHistory style={{ fontSize: '14px' }} />;
+    if (!type) return <FaHistory />;
     
     const iconProps = { style: { fontSize: '14px' } };
     
     switch (true) {
       case type.includes('user_'):
         return <FaUser {...iconProps} />;
+      case type.includes('admin_'):
+        return <FaShieldAlt {...iconProps} />;
       case type.includes('order_'):
         return <FaShoppingBag {...iconProps} />;
       case type.includes('booking_'):
         return <FaCalendarAlt {...iconProps} />;
       case type.includes('product_'):
         return <FaBoxOpen {...iconProps} />;
+      case type.includes('cart_'):
+        return <FaShoppingCart {...iconProps} />;
+      case type.includes('service_'):
+        return <FaTools {...iconProps} />;
+      case type.includes('payment_'):
+        return <FaCreditCard {...iconProps} />;
+      case type.includes('review_'):
+        return <FaStar {...iconProps} />;
       case type.includes('inventory_') || type.includes('stock_'):
         return <FaBoxOpen {...iconProps} />;
-     
-  
+      case type.includes('shipping_') || type.includes('delivered'):
+        return <FaTruck {...iconProps} />;
+      case type.includes('notification_') || type.includes('email_') || type.includes('sms_'):
+        return <FaBell {...iconProps} />;
+      case type.includes('promotion_') || type.includes('coupon_'):
+        return <FaTag {...iconProps} />;
       case type.includes('report_'):
-        return <FaHistory {...iconProps} />;
+        return <FaChartLine {...iconProps} />;
+      case type.includes('error_'):
+        return <FaExclamationCircle {...iconProps} />;
+      case type.includes('system_'):
+        return <FaCog {...iconProps} />;
       default:
         return <FaHistory {...iconProps} />;
     }
@@ -260,14 +396,20 @@ const ActivityLog = () => {
   const getSeverityColor = (type) => {
     if (!type) return { background: '#f3f4f6', color: '#6b7280' };
     
-    if (type.includes('delete') || type.includes('reject') || type.includes('cancel')) {
+    if (type.includes('delete') || type.includes('reject') || type.includes('cancel') || type.includes('failed') || type.includes('error')) {
       return { background: '#fee2e2', color: '#dc2626' };
     }
-    if (type.includes('create') || type.includes('approve') || type.includes('confirm') || type.includes('login')) {
+    if (type.includes('create') || type.includes('approve') || type.includes('confirm') || type.includes('success') || type.includes('complete')) {
       return { background: '#dcfce7', color: '#16a34a' };
     }
-    if (type.includes('update') || type.includes('adjustment')) {
+    if (type.includes('update') || type.includes('adjustment') || type.includes('change')) {
       return { background: '#dbeafe', color: '#2563eb' };
+    }
+    if (type.includes('login') || type.includes('register')) {
+      return { background: '#f0f9ff', color: '#0ea5e9' };
+    }
+    if (type.includes('view') || type.includes('access')) {
+      return { background: '#f5f3ff', color: '#8b5cf6' };
     }
     return { background: '#f3f4f6', color: '#6b7280' };
   };
@@ -309,42 +451,44 @@ const ActivityLog = () => {
       const sampleActivities = [
         {
           user_id: user.id,
-          activity_type: 'user_login',
-          description: `${userName} logged into the system`,
+          activity_type: 'admin_login',
+          description: `${userName} logged into admin dashboard`,
           ip_address: '192.168.1.100',
           user_agent: navigator.userAgent,
           metadata: { 
-            details: 'Successful authentication', 
+            details: 'Successful admin authentication',
             browser: 'Chrome/120.0.0.0',
             user_email: user.email,
+            user_role: 'admin',
             timestamp: new Date().toISOString()
           }
         },
         {
           user_id: user.id,
           activity_type: 'order_create',
-          description: 'New order #TEST-001 created',
+          description: 'New order #ORD-001 created by customer',
           ip_address: '192.168.1.100',
           user_agent: navigator.userAgent,
           metadata: { 
-            details: 'Test order with 2 items',
-            order_id: 'TEST-001',
-            amount: 99.99,
-            items: 2,
-            user_email: user.email,
+            details: 'Order with 3 items',
+            order_id: 'ORD-001',
+            amount: 149.99,
+            items: 3,
+            customer_email: 'customer@example.com',
             payment_method: 'Credit Card'
           }
         },
         {
           user_id: null,
-          activity_type: 'system_settings_update',
-          description: 'System configuration updated',
+          activity_type: 'system_backup',
+          description: 'Daily system backup completed',
           ip_address: null,
           user_agent: 'System',
           metadata: { 
-            details: 'Updated email notification settings',
-            changed_by: user.email,
-          
+            details: 'Automatic backup of database',
+            backup_size: '45.2 MB',
+            duration: '2m 15s',
+            status: 'success'
           }
         },
         {
@@ -371,8 +515,36 @@ const ActivityLog = () => {
             details: 'Booking confirmed for client John Doe',
             booking_id: 'BK-001',
             client_email: 'john.doe@example.com',
-            booking_date: '2026-01-25',
+            booking_date: '2024-01-25',
             amount: 199.99
+          }
+        },
+        {
+          user_id: user.id,
+          activity_type: 'inventory_update',
+          description: 'Inventory stock adjusted',
+          ip_address: '192.168.1.100',
+          user_agent: navigator.userAgent,
+          metadata: { 
+            details: 'Stock adjustment for product XYZ',
+            product_id: 'PROD-002',
+            old_stock: 50,
+            new_stock: 45,
+            reason: 'Damaged items'
+          }
+        },
+        {
+          user_id: null,
+          activity_type: 'low_stock_alert',
+          description: 'Low stock alert for Product ABC',
+          ip_address: null,
+          user_agent: 'System',
+          metadata: { 
+            details: 'Stock level below threshold',
+            product_id: 'PROD-003',
+            current_stock: 5,
+            threshold: 10,
+            alert_type: 'low_stock'
           }
         }
       ];
@@ -439,7 +611,7 @@ const ActivityLog = () => {
       const { error } = await supabase
         .from('activity_logs')
         .delete()
-        .gt('id', 0);
+        .gt('created_at', '1900-01-01');
 
       if (error) throw error;
       
@@ -473,718 +645,557 @@ const ActivityLog = () => {
     }
   };
 
-  // Professional styles
-  const styles = {
-    container: {
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-      padding: '24px'
-    },
-    header: {
-      marginBottom: '32px'
-    },
-    headerTitle: {
-      fontSize: '28px',
-      fontWeight: '700',
-      color: '#1e293b',
-      margin: '0 0 8px 0',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px'
-    },
-    headerSubtitle: {
-      fontSize: '14px',
-      color: '#64748b',
-      margin: 0
-    },
-    card: {
-      background: 'white',
-      borderRadius: '12px',
-      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-      overflow: 'hidden',
-      marginBottom: '24px',
-      border: '1px solid #e2e8f0'
-    },
-    cardHeader: {
-      padding: '24px',
-      borderBottom: '1px solid #e2e8f0',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: '16px'
-    },
-    cardTitle: {
-      fontSize: '18px',
-      fontWeight: '600',
-      color: '#334155',
-      margin: 0,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    cardContent: {
-      padding: '24px'
-    },
-    buttonGroup: {
-      display: 'flex',
-      gap: '12px',
-      flexWrap: 'wrap'
-    },
-    button: {
-      padding: '10px 20px',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: '500',
-      border: 'none',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      transition: 'all 0.2s',
-      minHeight: '40px'
-    },
-    buttonPrimary: {
-      background: '#3b82f6',
-      color: 'white'
-    },
-    buttonSecondary: {
-      background: '#e2e8f0',
-      color: '#475569'
-    },
-    buttonSuccess: {
-      background: '#10b981',
-      color: 'white'
-    },
-    buttonDanger: {
-      background: '#ef4444',
-      color: 'white'
-    },
-    buttonDisabled: {
-      opacity: 0.5,
-      cursor: 'not-allowed'
-    },
-    tableContainer: {
-      overflowX: 'auto',
-      borderRadius: '8px',
-      border: '1px solid #e2e8f0'
-    },
-    table: {
-      width: '100%',
-      borderCollapse: 'collapse',
-      minWidth: '1000px'
-    },
-    tableHeader: {
-      background: '#f8fafc',
-      borderBottom: '2px solid #e2e8f0'
-    },
-    tableHeaderCell: {
-      padding: '16px',
-      textAlign: 'left',
-      fontSize: '12px',
-      fontWeight: '600',
-      color: '#64748b',
-      textTransform: 'uppercase',
-      letterSpacing: '0.05em',
-      whiteSpace: 'nowrap'
-    },
-    tableRow: {
-      borderBottom: '1px solid #e2e8f0',
-      transition: 'background 0.2s'
-    },
-    tableCell: {
-      padding: '16px',
-      fontSize: '14px',
-      color: '#334155',
-      verticalAlign: 'top'
-    },
-    badge: {
-      display: 'inline-block',
-      padding: '4px 8px',
-      borderRadius: '6px',
-      fontSize: '12px',
-      fontWeight: '500',
-      textTransform: 'uppercase',
-      letterSpacing: '0.05em',
-      marginBottom: '4px'
-    },
-    activityCell: {
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '12px'
-    },
-    activityIcon: {
-      padding: '8px',
-      borderRadius: '8px',
-      background: '#f1f5f9',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0
-    },
-    activityInfo: {
-      flex: 1,
-      minWidth: 0
-    },
-    activityTitle: {
-      fontSize: '14px',
-      fontWeight: '500',
-      color: '#334155',
-      margin: '0 0 4px 0',
-      wordBreak: 'break-word'
-    },
-    activityDetails: {
-      fontSize: '12px',
-      color: '#64748b',
-      margin: 0,
-      wordBreak: 'break-word'
-    },
-    userCell: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px'
-    },
-    userAvatar: {
-      width: '36px',
-      height: '36px',
-      borderRadius: '50%',
-      background: '#e0f2fe',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: '#0369a1',
-      fontSize: '14px',
-      fontWeight: '600',
-      flexShrink: 0
-    },
-    userInfo: {
-      display: 'flex',
-      flexDirection: 'column',
-      minWidth: 0
-    },
-    userName: {
-      fontSize: '14px',
-      fontWeight: '500',
-      color: '#334155',
-      margin: 0,
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap'
-    },
-    userEmail: {
-      fontSize: '12px',
-      color: '#64748b',
-      margin: 0,
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap'
-    },
-    emptyState: {
-      padding: '48px 24px',
-      textAlign: 'center'
-    },
-    emptyIcon: {
-      fontSize: '48px',
-      color: '#cbd5e1',
-      marginBottom: '16px'
-    },
-    emptyTitle: {
-      fontSize: '18px',
-      fontWeight: '600',
-      color: '#334155',
-      margin: '0 0 8px 0'
-    },
-    emptyText: {
-      fontSize: '14px',
-      color: '#64748b',
-      margin: '0 0 24px 0'
-    },
-    loadingContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '400px',
-      background: 'white',
-      borderRadius: '12px',
-      padding: '48px'
-    },
-    spinner: {
-      width: '40px',
-      height: '40px',
-      border: '3px solid #e2e8f0',
-      borderTop: '3px solid #3b82f6',
-      borderRadius: '50%',
-      animation: 'spin 1s linear infinite',
-      marginBottom: '16px'
-    },
-    alert: {
-      padding: '16px',
-      borderRadius: '8px',
-      marginBottom: '24px',
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '12px'
-    },
-    errorAlert: {
-      background: '#fef2f2',
-      border: '1px solid #fecaca'
-    },
-    successAlert: {
-      background: '#f0fdf4',
-      border: '1px solid #bbf7d0'
-    },
-    alertIcon: {
-      fontSize: '16px',
-      marginTop: '2px',
-      flexShrink: 0
-    },
-    errorIcon: {
-      color: '#dc2626'
-    },
-    successIcon: {
-      color: '#16a34a'
-    },
-    alertContent: {
-      flex: 1
-    },
-    alertTitle: {
-      fontSize: '14px',
-      fontWeight: '600',
-      margin: '0 0 4px 0'
-    },
-    errorTitle: {
-      color: '#dc2626'
-    },
-    successTitle: {
-      color: '#166534'
-    },
-    alertMessage: {
-      fontSize: '14px',
-      margin: 0
-    },
-    errorMessage: {
-      color: '#991b1b'
-    },
-    successMessage: {
-      color: '#166534'
-    },
-    metadataItem: {
-      fontSize: '12px',
-      color: '#64748b',
-      marginTop: '2px',
-      wordBreak: 'break-word'
-    },
-    ipAddress: {
-      fontFamily: 'monospace',
-      fontSize: '13px',
-      color: '#334155',
-      wordBreak: 'break-all'
-    },
-    browserInfo: {
-      fontSize: '12px',
-      color: '#64748b',
-      marginTop: '2px'
-    },
-    dateTime: {
-      display: 'flex',
-      flexDirection: 'column'
-    },
-    date: {
-      fontSize: '14px',
-      fontWeight: '500',
-      color: '#334155',
-      margin: 0
-    },
-    time: {
-      fontSize: '12px',
-      color: '#64748b',
-      margin: '4px 0 0 0'
-    },
-    pagination: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '16px 24px',
-      borderTop: '1px solid #e2e8f0',
-      background: '#f8fafc'
-    },
-    paginationInfo: {
-      fontSize: '14px',
-      color: '#64748b'
-    },
-    paginationButtons: {
-      display: 'flex',
-      gap: '8px'
-    },
-    paginationButton: {
-      padding: '8px 12px',
-      borderRadius: '6px',
-      border: '1px solid #cbd5e1',
-      background: 'white',
-      color: '#334155',
-      cursor: 'pointer',
-      fontSize: '14px',
-      transition: 'all 0.2s'
-    },
-    paginationButtonActive: {
-      background: '#3b82f6',
-      color: 'white',
-      borderColor: '#3b82f6'
-    },
-    paginationButtonDisabled: {
-      opacity: 0.5,
-      cursor: 'not-allowed'
-    }
+  // Get unique activity categories for filter
+  const getActivityCategories = () => {
+    const categories = {};
+    activities.forEach(activity => {
+      if (activity.activity_type) {
+        const category = activity.activity_type.split('_')[0];
+        categories[category] = true;
+      }
+    });
+    return Object.keys(categories).sort();
   };
+
+  if (!isAdmin && activities.length > 0) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#f8fafc',
+        padding: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '48px',
+          textAlign: 'center',
+          maxWidth: '500px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+        }}>
+          <FaShieldAlt style={{ fontSize: '64px', color: '#ef4444', marginBottom: '24px' }} />
+          <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#1e293b', marginBottom: '12px' }}>
+            Access Denied
+          </h2>
+          <p style={{ color: '#64748b', marginBottom: '24px' }}>
+            This section is only accessible to administrators.
+          </p>
+          <button
+            onClick={() => window.history.back()}
+            style={{
+              padding: '12px 24px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner}></div>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '400px',
+        background: 'white',
+        borderRadius: '12px',
+        padding: '48px',
+        margin: '24px'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid #e2e8f0',
+          borderTop: '3px solid #3b82f6',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '16px'
+        }}></div>
         <p style={{ color: '#64748b' }}>Loading activity logs...</p>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
+    <div style={{
+      minHeight: '100vh',
+      background: '#f8fafc',
+      padding: '24px'
+    }}>
       {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.headerTitle}>
+      <div style={{
+        marginBottom: '32px',
+        background: 'white',
+        borderRadius: '12px',
+        padding: '32px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+      }}>
+        <h1 style={{
+          fontSize: '28px',
+          fontWeight: '700',
+          color: '#1e293b',
+          margin: '0 0 8px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
           <FaHistory style={{ color: '#3b82f6' }} />
-          Activity Log
+          Activity Log Monitor
         </h1>
-        <p style={styles.headerSubtitle}>Monitor and track all system activities in real-time</p>
+        <p style={{
+          fontSize: '14px',
+          color: '#64748b',
+          margin: 0
+        }}>
+          Real-time monitoring of all system activities. Total records: {totalCount}
+        </p>
       </div>
 
       {/* Success Alert */}
       {showSuccess && (
-        <div style={{ ...styles.alert, ...styles.successAlert }}>
-          <FaCheckCircle style={{ ...styles.alertIcon, ...styles.successIcon }} />
-          <div style={styles.alertContent}>
-            <h3 style={{ ...styles.alertTitle, ...styles.successTitle }}>Success!</h3>
-            <p style={{ ...styles.alertMessage, ...styles.successMessage }}>
-              Operation completed successfully
-            </p>
-          </div>
+        <div style={{
+          background: '#dcfce7',
+          border: '1px solid #bbf7d0',
+          color: '#166534',
+          padding: '16px',
+          borderRadius: '8px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <FaCheckCircle />
+          <span>Operation completed successfully!</span>
         </div>
       )}
 
       {/* Error Alert */}
       {error && (
-        <div style={{ ...styles.alert, ...styles.errorAlert }}>
-          <FaExclamationTriangle style={{ ...styles.alertIcon, ...styles.errorIcon }} />
-          <div style={styles.alertContent}>
-            <h3 style={{ ...styles.alertTitle, ...styles.errorTitle }}>Error</h3>
-            <p style={{ ...styles.alertMessage, ...styles.errorMessage }}>{error}</p>
-          </div>
+        <div style={{
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          color: '#991b1b',
+          padding: '16px',
+          borderRadius: '8px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <FaExclamationTriangle />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Status Alert */}
-      {!error && activities.length > 0 && (
-        <div style={{ ...styles.alert, ...styles.successAlert }}>
-          <FaCheckCircle style={{ ...styles.alertIcon, ...styles.successIcon }} />
-          <div style={styles.alertContent}>
-            <p style={{ ...styles.alertMessage, ...styles.successMessage }}>
-              ✅ Connected successfully! Found {activities.length} activity logs
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* REMOVED: Entire Filters & Controls Card - This section has been removed */}
-
-      {/* Activity Logs Card */}
-      <div style={styles.card}>
-        <div style={styles.cardHeader}>
-          <div>
-            <h2 style={styles.cardTitle}>
-              <FaHistory style={{ color: '#64748b' }} />
-              Activity Records
-            </h2>
-            <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0 0' }}>
-              Showing {paginatedActivities.length} of {filteredActivities.length} activities
-              {totalCount > 0 && ` (Total in database: ${totalCount})`}
-            </p>
-          </div>
-          <div style={styles.buttonGroup}>
+      {/* Filters & Controls Card */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        marginBottom: '24px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <div style={{
+          padding: '24px',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={refreshLogs}
               disabled={refreshing}
               style={{
-                ...styles.button,
-                ...styles.buttonSecondary,
-                ...(refreshing ? styles.buttonDisabled : {})
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                opacity: refreshing ? 0.7 : 1
               }}
             >
-              <FaSync style={{ 
-                animation: refreshing ? 'spin 1s linear infinite' : 'none',
-                fontSize: '14px'
-              }} />
+              <FaSync style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
               {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
+          </div>
+        </div>
+
+        
+        
+      </div>
+
+      {/* Activity Logs Card */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        marginBottom: '24px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <div style={{
+          padding: '24px',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#334155', margin: 0 }}>
+              Activity Records ({filteredActivities.length})
+            </h2>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0 0' }}>
+              Showing {paginatedActivities.length} of {filteredActivities.length} activities
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {activities.length === 0 && (
               <button
                 onClick={seedSampleData}
-                style={{ ...styles.button, ...styles.buttonPrimary }}
+                style={{
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
               >
-                <FaPlus style={{ fontSize: '14px' }} /> Create Sample Data
+                <FaPlus /> Create Sample Data
               </button>
             )}
             <button
               onClick={clearAllLogs}
-              style={{ ...styles.button, ...styles.buttonDanger }}
+              style={{
+                background: '#ef4444',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
-              <FaTrash style={{ fontSize: '14px' }} /> Clear All Logs
+              <FaTrash /> Clear All Logs
             </button>
             <button
               onClick={exportToCSV}
               disabled={filteredActivities.length === 0}
               style={{
-                ...styles.button,
-                ...styles.buttonSuccess,
-                ...(filteredActivities.length === 0 ? styles.buttonDisabled : {})
+                background: filteredActivities.length === 0 ? '#cbd5e1' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                cursor: filteredActivities.length === 0 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                opacity: filteredActivities.length === 0 ? 0.7 : 1
               }}
             >
-              <FaDownload style={{ fontSize: '14px' }} /> Export CSV
+              <FaDownload /> Export CSV
             </button>
           </div>
         </div>
 
-        <div style={styles.tableContainer}>
+        <div style={{ overflowX: 'auto' }}>
           {paginatedActivities.length === 0 ? (
-            <div style={styles.emptyState}>
+            <div style={{ padding: '48px', textAlign: 'center' }}>
               {activities.length === 0 ? (
                 <>
-                  <FaHistory style={styles.emptyIcon} />
-                  <h3 style={styles.emptyTitle}>No activity logs found</h3>
-                  <p style={styles.emptyText}>Your activity logs table is empty</p>
+                  <FaHistory style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px' }} />
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#334155', marginBottom: '8px' }}>
+                    No activity logs found
+                  </h3>
+                  <p style={{ color: '#64748b', marginBottom: '24px' }}>
+                    Your activity logs table is empty. Create sample data to get started.
+                  </p>
                   <button
                     onClick={seedSampleData}
-                    style={{ ...styles.button, ...styles.buttonPrimary }}
+                    style={{
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      margin: '0 auto'
+                    }}
                   >
-                    <FaPlus style={{ fontSize: '14px' }} /> Create Sample Activity Data
+                    <FaPlus /> Create Sample Activity Data
                   </button>
                 </>
               ) : (
                 <>
-                  <FaSearch style={styles.emptyIcon} />
-                  <h3 style={styles.emptyTitle}>No activities match your filters</h3>
-                  <p style={styles.emptyText}>Try adjusting your search or filters</p>
-                  <button
-                    onClick={clearFilters}
-                    style={{ ...styles.button, ...styles.buttonSecondary }}
-                  >
-                    Clear All Filters
-                  </button>
+                  <FaSearch style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px' }} />
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#334155', marginBottom: '8px' }}>
+                    No activities match your filters
+                  </h3>
+                  <p style={{ color: '#64748b', marginBottom: '24px' }}>
+                    Try adjusting your search or filters
+                  </p>
                 </>
               )}
             </div>
           ) : (
-            <>
-              <table style={styles.table}>
-                <thead style={styles.tableHeader}>
-                  <tr>
-                    <th style={styles.tableHeaderCell}>Time</th>
-                    <th style={styles.tableHeaderCell}>User</th>
-                    <th style={styles.tableHeaderCell}>Activity</th>
-                    <th style={styles.tableHeaderCell}>Details</th>
-                    <th style={styles.tableHeaderCell}>IP Address</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedActivities.map((activity) => {
-                    const userInfo = users.find(u => u.id === activity.user_id);
-                    const severityColors = getSeverityColor(activity.activity_type);
-                    
-                    return (
-                      <tr 
-                        key={activity.id} 
-                        style={styles.tableRow}
-                        onClick={() => setSelectedActivity(activity)}
-                      >
-                        {/* Time Column */}
-                        <td style={styles.tableCell}>
-                          <div style={styles.dateTime}>
-                            <div style={styles.date}>
-                              {new Date(activity.created_at).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </div>
-                            <div style={styles.time}>
-                              {new Date(activity.created_at).toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                              })}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* User Column */}
-                        <td style={styles.tableCell}>
-                          <div style={styles.userCell}>
-                            <div style={styles.userAvatar}>
-                              {activity.user_id ? (
-                                <FaUserCircle />
-                              ) : (
-                                <FaCog />
-                              )}
-                            </div>
-                            <div style={styles.userInfo}>
-                              <div style={styles.userName}>
-                                {userInfo?.name || (activity.user_id ? 'User' : 'System')}
-                              </div>
-                              <div style={styles.userEmail}>
-                                {userInfo?.email || (activity.user_id ? `ID: ${activity.user_id.substring(0, 8)}...` : 'Automated System')}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Activity Column */}
-                        <td style={styles.tableCell}>
-                          <div style={styles.activityCell}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              minWidth: '1200px'
+            }}>
+              <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                <tr>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Time</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>User</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Activity</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Details</th>
+                  <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>IP Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedActivities.map((activity) => {
+                  const user = users.find(u => u.id === activity.user_id);
+                  const severityColors = getSeverityColor(activity.activity_type);
+                  
+                  return (
+                    <tr 
+                      key={activity.id} 
+                      style={{ 
+                        borderBottom: '1px solid #e2e8f0',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                      onClick={() => setSelectedActivity(activity)}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+                          {new Date(activity.created_at).toLocaleDateString()}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                          {new Date(activity.created_at).toLocaleTimeString()}
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                        {user ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{
-                              ...styles.activityIcon,
-                              background: severityColors.background,
-                              color: severityColors.color
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '50%',
+                              background: '#e0f2fe',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#0369a1',
+                              fontWeight: '600'
                             }}>
-                              {getActivityIcon(activity.activity_type)}
+                              {user.name?.charAt(0)?.toUpperCase() || 'U'}
                             </div>
-                            <div style={styles.activityInfo}>
-                              <span style={{
-                                ...styles.badge,
-                                background: severityColors.background,
-                                color: severityColors.color
-                              }}>
-                                {getActivityLabel(activity.activity_type)}
-                              </span>
-                              <p style={styles.activityTitle}>
-                                {activity.description || 'No description'}
-                              </p>
+                            <div>
+                              <div style={{ fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+                                {user.name}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                {user.email}
+                              </div>
                             </div>
                           </div>
-                        </td>
-
-                        {/* Details Column */}
-                        <td style={styles.tableCell}>
-                          <div style={styles.activityDetails}>
-                            {activity.metadata?.details || 'No additional details'}
-                          </div>
-                          {activity.metadata && (
-                            <div style={{ marginTop: '8px' }}>
-                              {Object.entries(activity.metadata)
-                                .filter(([key]) => key !== 'details')
-                                .slice(0, 2)
-                                .map(([key, value]) => (
-                                  <div key={key} style={styles.metadataItem}>
-                                    <strong>{key}:</strong> {typeof value === 'object' ? JSON.stringify(value) : value}
-                                  </div>
-                                ))}
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '50%',
+                              background: '#f1f5f9',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#64748b'
+                            }}>
+                              <FaCog />
                             </div>
-                          )}
-                        </td>
-
-                        {/* IP Address Column */}
-                        <td style={styles.tableCell}>
-                          <div style={styles.ipAddress}>
-                            {activity.ip_address || 'N/A'}
-                          </div>
-                          {activity.user_agent && activity.user_agent !== 'System' && (
-                            <div style={styles.browserInfo}>
-                              {activity.user_agent.split('/')[0]}
+                            <div style={{ fontSize: '14px', color: '#64748b' }}>
+                              System
                             </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div style={styles.pagination}>
-                  <div style={styles.paginationInfo}>
-                    Page {currentPage} of {totalPages} • Showing {paginatedActivities.length} items
-                  </div>
-                  <div style={styles.paginationButtons}>
-                    <button
-                      onClick={() => handlePageChange(1)}
-                      disabled={currentPage === 1}
-                      style={{
-                        ...styles.paginationButton,
-                        ...(currentPage === 1 ? styles.paginationButtonDisabled : {})
-                      }}
-                    >
-                      First
-                    </button>
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      style={{
-                        ...styles.paginationButton,
-                        ...(currentPage === 1 ? styles.paginationButtonDisabled : {})
-                      }}
-                    >
-                      Previous
-                    </button>
-                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          style={{
-                            ...styles.paginationButton,
-                            ...(currentPage === pageNum ? styles.paginationButtonActive : {})
-                          }}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      style={{
-                        ...styles.paginationButton,
-                        ...(currentPage === totalPages ? styles.paginationButtonDisabled : {})
-                      }}
-                    >
-                      Next
-                    </button>
-                    <button
-                      onClick={() => handlePageChange(totalPages)}
-                      disabled={currentPage === totalPages}
-                      style={{
-                        ...styles.paginationButton,
-                        ...(currentPage === totalPages ? styles.paginationButtonDisabled : {})
-                      }}
-                    >
-                      Last
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                          <div style={{
+                            padding: '8px',
+                            borderRadius: '8px',
+                            background: severityColors.background,
+                            color: severityColors.color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            {getActivityIcon(activity.activity_type)}
+                          </div>
+                          <div>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '4px 8px',
+                              background: severityColors.background,
+                              color: severityColors.color,
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              marginBottom: '8px'
+                            }}>
+                              {getActivityLabel(activity.activity_type)}
+                            </span>
+                            <div style={{ fontSize: '14px', color: '#334155', marginTop: '4px' }}>
+                              {activity.description}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                        <div style={{ fontSize: '14px', color: '#334155' }}>
+                          {activity.metadata?.details || 'No additional details'}
+                        </div>
+                        {activity.metadata && Object.keys(activity.metadata).length > 1 && (
+                          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+                            {Object.keys(activity.metadata).length - 1} more fields
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                        <div style={{ 
+                          fontSize: '13px', 
+                          color: '#334155',
+                          fontFamily: 'monospace',
+                          background: '#f1f5f9',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          display: 'inline-block'
+                        }}>
+                          {activity.ip_address || 'N/A'}
+                        </div>
+                        {activity.user_agent && activity.user_agent !== 'System' && (
+                          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                            {activity.user_agent.split('/')[0]}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{
+            padding: '16px 24px',
+            borderTop: '1px solid #e2e8f0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: '#f8fafc'
+          }}>
+            <div style={{ fontSize: '14px', color: '#64748b' }}>
+              Page {currentPage} of {totalPages}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#334155',
+                  borderRadius: '6px',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === 1 ? 0.5 : 1
+                }}
+              >
+                Previous
+              </button>
+              {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1px solid #cbd5e1',
+                      background: currentPage === pageNum ? '#3b82f6' : 'white',
+                      color: currentPage === pageNum ? 'white' : '#334155',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      minWidth: '40px'
+                    }}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#334155',
+                  borderRadius: '6px',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === totalPages ? 0.5 : 1
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Activity Detail Modal */}
@@ -1234,11 +1245,8 @@ const ActivityLog = () => {
                   justifyContent: 'center',
                   width: '32px',
                   height: '32px',
-                  borderRadius: '6px',
-                  transition: 'all 0.2s'
+                  borderRadius: '6px'
                 }}
-                onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
-                onMouseLeave={(e) => e.target.style.background = 'transparent'}
               >
                 <FaTimes />
               </button>
@@ -1264,10 +1272,14 @@ const ActivityLog = () => {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{
-                    ...styles.badge,
+                    display: 'inline-block',
+                    padding: '4px 8px',
                     background: getSeverityColor(selectedActivity.activity_type).background,
                     color: getSeverityColor(selectedActivity.activity_type).color,
-                    marginBottom: '4px'
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    marginBottom: '8px'
                   }}>
                     {getActivityLabel(selectedActivity.activity_type)}
                   </div>
@@ -1283,17 +1295,11 @@ const ActivityLog = () => {
                 padding: '16px',
                 marginBottom: '16px'
               }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
                     <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Timestamp</div>
                     <div style={{ fontSize: '14px', color: '#334155' }}>
                       {new Date(selectedActivity.created_at).toLocaleString()}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Activity ID</div>
-                    <div style={{ fontSize: '14px', color: '#334155', fontFamily: 'monospace' }}>
-                      {selectedActivity.id?.substring(0, 8)}...
                     </div>
                   </div>
                   <div>
@@ -1302,16 +1308,10 @@ const ActivityLog = () => {
                       {selectedActivity.ip_address || 'N/A'}
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Browser/Agent</div>
-                    <div style={{ fontSize: '14px', color: '#334155' }}>
-                      {selectedActivity.user_agent || 'N/A'}
-                    </div>
-                  </div>
                 </div>
               </div>
 
-              {selectedActivity.metadata && Object.keys(selectedActivity.metadata).length > 0 && (
+              {selectedActivity.metadata && (
                 <div>
                   <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#334155', margin: '0 0 12px 0' }}>
                     Metadata
@@ -1342,35 +1342,11 @@ const ActivityLog = () => {
         </div>
       )}
 
-      {/* Add CSS animation */}
       <style>
         {`
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-          }
-          
-          input:focus, select:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-          }
-          
-          button:not(:disabled):hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          }
-          
-          button:not(:disabled):active {
-            transform: translateY(0);
-          }
-          
-          tbody tr {
-            cursor: pointer;
-          }
-          
-          tbody tr:hover {
-            background: #f8fafc !important;
           }
         `}
       </style>

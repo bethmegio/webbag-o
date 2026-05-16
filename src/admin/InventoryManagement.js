@@ -1,4 +1,3 @@
- // InventoryManagement.js - Professional Action Buttons Version
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { 
@@ -165,7 +164,7 @@ const InventoryManagement = () => {
     if (quantity === 0 || quantity === null || quantity === undefined) {
       return { 
         status: 'Out of Stock', 
-        color: '#ef4444', 
+        color: '#dc2626', 
         bgColor: '#fee2e2',
         icon: <FaExclamationTriangle />,
         badgeColor: '#dc2626'
@@ -177,7 +176,7 @@ const InventoryManagement = () => {
         color: '#f59e0b', 
         bgColor: '#fffbeb',
         icon: <FaExclamationTriangle />,
-        badgeColor: '#d97706'
+        badgeColor: '#f59e0b'
       };
     }
     return { 
@@ -185,7 +184,7 @@ const InventoryManagement = () => {
       color: '#10b981', 
       bgColor: '#d1fae5',
       icon: <FaBox />,
-      badgeColor: '#059669'
+      badgeColor: '#10b981'
     };
   };
 
@@ -395,7 +394,7 @@ const InventoryManagement = () => {
       <div style={styles.container}>
         <div style={styles.loading}>
           <div style={styles.spinner}></div>
-          <p>Loading inventory...</p>
+          <p style={{color: '#0077b6'}}>Loading inventory...</p>
         </div>
       </div>
     );
@@ -407,7 +406,7 @@ const InventoryManagement = () => {
         <div style={styles.headerContent}>
           <div>
             <h1 style={styles.title}>
-              <FaWarehouse style={{ marginRight: '10px' }} />
+              <FaWarehouse style={{ marginRight: '10px', color: '#0077b6' }} />
               Inventory Management
             </h1>
             <p style={styles.subtitle}>Track and manage your product inventory</p>
@@ -432,7 +431,7 @@ const InventoryManagement = () => {
       {/* Stats Cards */}
       <div style={styles.statsGrid}>
         <div style={styles.statCard}>
-          <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '16px', borderRadius: '10px' }}>
+          <div style={{ background: '#0077b6', padding: '16px', borderRadius: '10px' }}>
             <FaBox size={24} color="white" />
           </div>
           <div>
@@ -442,7 +441,7 @@ const InventoryManagement = () => {
         </div>
 
         <div style={styles.statCard}>
-          <div style={{ background: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)', padding: '16px', borderRadius: '10px' }}>
+          <div style={{ background: '#0077b6', padding: '16px', borderRadius: '10px' }}>
             <FaExclamationTriangle size={24} color="white" />
           </div>
           <div>
@@ -452,7 +451,7 @@ const InventoryManagement = () => {
         </div>
 
         <div style={styles.statCard}>
-          <div style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', padding: '16px', borderRadius: '10px' }}>
+          <div style={{ background: '#0077b6', padding: '16px', borderRadius: '10px' }}>
             <FaExclamationTriangle size={24} color="white" />
           </div>
           <div>
@@ -462,7 +461,7 @@ const InventoryManagement = () => {
         </div>
 
         <div style={styles.statCard}>
-          <div style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', padding: '16px', borderRadius: '10px' }}>
+          <div style={{ background: '#0077b6', padding: '16px', borderRadius: '10px' }}>
             <FaWarehouse size={24} color="white" />
           </div>
           <div>
@@ -472,7 +471,7 @@ const InventoryManagement = () => {
         </div>
 
         <div style={styles.statCard}>
-          <div style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', padding: '16px', borderRadius: '10px' }}>
+          <div style={{ background: '#0077b6', padding: '16px', borderRadius: '10px' }}>
             <FaShoppingCart size={24} color="white" />
           </div>
           <div>
@@ -486,7 +485,7 @@ const InventoryManagement = () => {
       {showAddForm && (
         <div style={styles.formContainer}>
           <div style={styles.formHeader}>
-            <h2 style={{ color: '#2d3748', margin: 0 }}>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
+            <h2 style={{ color: '#0077b6', margin: 0 }}>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
             <button style={styles.closeButton} onClick={resetForm}>
               <FaTimes />
             </button>
@@ -494,23 +493,23 @@ const InventoryManagement = () => {
           <form onSubmit={handleAddProduct} style={styles.form}>
             <div style={styles.formGrid}>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Product Name *</label>
+                <label style={{...styles.label, color: '#0077b6'}}>Product Name *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  style={styles.input}
+                  style={{...styles.input, borderColor: '#0077b6'}}
                   required
                   placeholder="Enter product name"
                 />
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Category</label>
+                <label style={{...styles.label, color: '#0077b6'}}>Category</label>
                 <select
                   value={formData.category_id}
                   onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                  style={styles.input}
+                  style={{...styles.input, borderColor: '#0077b6'}}
                 >
                   <option value="">Select Category</option>
                   {categories.map(category => (
@@ -522,12 +521,12 @@ const InventoryManagement = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Price (₱) *</label>
+                <label style={{...styles.label, color: '#0077b6'}}>Price (₱) *</label>
                 <input
                   type="number"
                   value={formData.price}
                   onChange={(e) => setFormData({...formData, price: e.target.value})}
-                  style={styles.input}
+                  style={{...styles.input, borderColor: '#0077b6'}}
                   min="0"
                   step="0.01"
                   required
@@ -535,34 +534,34 @@ const InventoryManagement = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Initial Stock</label>
+                <label style={{...styles.label, color: '#0077b6'}}>Initial Stock</label>
                 <input
                   type="number"
                   value={formData.stock}
                   onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                  style={styles.input}
+                  style={{...styles.input, borderColor: '#0077b6'}}
                   min="0"
                 />
               </div>
 
               <div style={styles.formGroupFull}>
-                <label style={styles.label}>Description</label>
+                <label style={{...styles.label, color: '#0077b6'}}>Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  style={styles.textarea}
+                  style={{...styles.textarea, borderColor: '#0077b6'}}
                   rows="3"
                   placeholder="Product description..."
                 />
               </div>
 
               <div style={styles.formGroupFull}>
-                <label style={styles.label}>Image URL</label>
+                <label style={{...styles.label, color: '#0077b6'}}>Image URL</label>
                 <input
                   type="url"
                   value={formData.image_url}
                   onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                  style={styles.input}
+                  style={{...styles.input, borderColor: '#0077b6'}}
                   placeholder="https://example.com/image.jpg"
                 />
                 {formData.image_url && (
@@ -577,8 +576,8 @@ const InventoryManagement = () => {
                       }}
                     />
                     <div style={styles.imagePlaceholder}>
-                      <FaImage size={24} color="#6b7280" />
-                      <span>Image preview not available</span>
+                      <FaImage size={24} color="#0077b6" />
+                      <span style={{color: '#0077b6'}}>Image preview not available</span>
                     </div>
                   </div>
                 )}
@@ -602,24 +601,24 @@ const InventoryManagement = () => {
         <div style={styles.modalOverlay}>
           <div style={styles.confirmModal}>
             <div style={styles.modalHeader}>
-              <FaExclamationTriangle size={24} color="#ef4444" />
-              <h3 style={styles.modalTitle}>Delete Product</h3>
+              <FaExclamationTriangle size={24} color="#0077b6" />
+              <h3 style={{...styles.modalTitle, color: '#0077b6'}}>Delete Product</h3>
             </div>
-            <p style={styles.confirmMessage}>
+            <p style={{...styles.confirmMessage, color: '#0077b6'}}>
               Are you sure you want to delete "<strong>{productToDelete.name}</strong>"? This action cannot be undone.
             </p>
             <div style={styles.productInfo}>
               <div style={styles.productInfoRow}>
-                <span style={styles.productInfoLabel}>Price:</span>
-                <span style={styles.productInfoValue}>₱{productToDelete.price || 0}</span>
+                <span style={{...styles.productInfoLabel, color: '#0077b6'}}>Price:</span>
+                <span style={{...styles.productInfoValue, color: '#0077b6'}}>₱{productToDelete.price || 0}</span>
               </div>
               <div style={styles.productInfoRow}>
-                <span style={styles.productInfoLabel}>Stock:</span>
-                <span style={styles.productInfoValue}>{productToDelete.stock || 0} units</span>
+                <span style={{...styles.productInfoLabel, color: '#0077b6'}}>Stock:</span>
+                <span style={{...styles.productInfoValue, color: '#0077b6'}}>{productToDelete.stock || 0} units</span>
               </div>
               <div style={styles.productInfoRow}>
-                <span style={styles.productInfoLabel}>Category:</span>
-                <span style={styles.productInfoValue}>{productToDelete.categories?.name || 'Uncategorized'}</span>
+                <span style={{...styles.productInfoLabel, color: '#0077b6'}}>Category:</span>
+                <span style={{...styles.productInfoValue, color: '#0077b6'}}>{productToDelete.categories?.name || 'Uncategorized'}</span>
               </div>
             </div>
             <div style={styles.modalActions}>
@@ -637,13 +636,13 @@ const InventoryManagement = () => {
       {/* Filters */}
       <div style={styles.filters}>
         <div style={styles.searchBox}>
-          <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+          <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#0077b6' }} />
           <input
             type="text"
             placeholder="Search products by name or description..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={styles.searchInput}
+            style={{...styles.searchInput, borderColor: '#0077b6'}}
           />
         </div>
 
@@ -651,7 +650,7 @@ const InventoryManagement = () => {
           <select
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value)}
-            style={styles.filterSelect}
+            style={{...styles.filterSelect, borderColor: '#0077b6'}}
           >
             <option value="all">All Stock Levels</option>
             <option value="in">In Stock (10+)</option>
@@ -662,7 +661,7 @@ const InventoryManagement = () => {
           <select
             value={selectedCategoryId}
             onChange={(e) => setSelectedCategoryId(e.target.value)}
-            style={styles.filterSelect}
+            style={{...styles.filterSelect, borderColor: '#0077b6'}}
           >
             <option value="all">All Categories</option>
             {categories.map(category => (
@@ -675,7 +674,7 @@ const InventoryManagement = () => {
           <select
             value={sortConfig.key}
             onChange={(e) => handleSort(e.target.value)}
-            style={styles.filterSelect}
+            style={{...styles.filterSelect, borderColor: '#0077b6'}}
           >
             <option value="name">Sort by Name</option>
             <option value="stock">Sort by Stock</option>
@@ -703,20 +702,20 @@ const InventoryManagement = () => {
         <table style={styles.table}>
           <thead>
             <tr>
-              <th style={styles.th} onClick={() => handleSort('name')}>
+              <th style={{...styles.th, color: '#0077b6'}} onClick={() => handleSort('name')}>
                 Product {getSortIcon('name')}
               </th>
-              <th style={styles.th} onClick={() => handleSort('category')}>
+              <th style={{...styles.th, color: '#0077b6'}} onClick={() => handleSort('category')}>
                 Category {getSortIcon('category')}
               </th>
-              <th style={styles.th} onClick={() => handleSort('stock')}>
+              <th style={{...styles.th, color: '#0077b6'}} onClick={() => handleSort('stock')}>
                 Stock {getSortIcon('stock')}
               </th>
-              <th style={styles.th} onClick={() => handleSort('price')}>
+              <th style={{...styles.th, color: '#0077b6'}} onClick={() => handleSort('price')}>
                 Price {getSortIcon('price')}
               </th>
-              <th style={styles.th}>Status</th>
-              <th style={styles.th}>Actions</th>
+              <th style={{...styles.th, color: '#0077b6'}}>Status</th>
+              <th style={{...styles.th, color: '#0077b6'}}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -725,7 +724,7 @@ const InventoryManagement = () => {
                 <td colSpan="6" style={styles.emptyCell}>
                   {inventory.length === 0 ? (
                     <div>
-                      <p>No products in inventory yet</p>
+                      <p style={{color: '#0077b6'}}>No products in inventory yet</p>
                       <button 
                         style={styles.addButton}
                         onClick={() => setShowAddForm(true)}
@@ -734,7 +733,7 @@ const InventoryManagement = () => {
                       </button>
                     </div>
                   ) : (
-                    <p>No products match your filters</p>
+                    <p style={{color: '#0077b6'}}>No products match your filters</p>
                   )}
                 </td>
               </tr>
@@ -757,21 +756,21 @@ const InventoryManagement = () => {
                           />
                         ) : null}
                         <div style={!item.image_url || item.image_url === '' ? styles.productImagePlaceholder : { display: 'none' }}>
-                          <FaBox size={20} color="#6b7280" />
+                          <FaBox size={20} color="#0077b6" />
                         </div>
                         <div>
-                          <div style={styles.productName}>{item.name}</div>
+                          <div style={{...styles.productName, color: '#0077b6'}}>{item.name}</div>
                           {item.description && (
-                            <div style={styles.productDescription}>{item.description}</div>
+                            <div style={{...styles.productDescription, color: '#0077b6'}}>{item.description}</div>
                           )}
-                          <div style={styles.productId}>ID: {item.id}</div>
+                          <div style={{...styles.productId, color: '#0077b6'}}>ID: {item.id}</div>
                         </div>
                       </div>
                     </td>
                     <td style={styles.td}>
                       <span style={{
                         ...styles.categoryBadge,
-                        background: `linear-gradient(135deg, ${getCategoryColor(item.categories?.name || '')})`
+                        background: '#0077b6'
                       }}>
                         <FaTag size={10} style={{ marginRight: '6px' }} />
                         {item.categories?.name || 'Uncategorized'}
@@ -781,7 +780,7 @@ const InventoryManagement = () => {
                       {editingStock === item.id ? (
                         <div style={styles.stockEditContainer}>
                           <div style={styles.stockEditHeader}>
-                            <span style={styles.stockEditLabel}>Update Stock</span>
+                            <span style={{...styles.stockEditLabel, color: '#0077b6'}}>Update Stock</span>
                             <button
                               style={styles.closeEditButton}
                               onClick={cancelStockEdit}
@@ -794,7 +793,7 @@ const InventoryManagement = () => {
                               type="number"
                               value={stockInput}
                               onChange={(e) => setStockInput(e.target.value)}
-                              style={styles.stockInput}
+                              style={{...styles.stockInput, borderColor: '#0077b6'}}
                               min="0"
                               autoFocus
                             />
@@ -806,7 +805,7 @@ const InventoryManagement = () => {
                                 +10
                               </button>
                               <button
-                                style={styles.saveEditButton}
+                                style={{...styles.saveEditButton, background: '#10b981'}}
                                 onClick={() => saveStockEdit(item.id)}
                               >
                                 <FaCheck /> Save
@@ -821,20 +820,20 @@ const InventoryManagement = () => {
                               ...styles.stockIndicator,
                               background: stockInfo.badgeColor
                             }}></div>
-                            <span style={styles.stockValue}>
+                            <span style={{...styles.stockValue, color: '#0077b6'}}>
                               {item.stock || 0}
                             </span>
                           </div>
                           <div style={styles.stockActions}>
                             <button
-                              style={styles.quickActionButton}
+                              style={{...styles.quickActionButton, color: '#10b981'}}
                               onClick={() => adjustStock(item.id, 1)}
                               title="Add 1 unit"
                             >
                               <FaPlusCircle />
                             </button>
                             <button
-                              style={styles.editStockTrigger}
+                              style={{...styles.editStockTrigger, color: '#0077b6'}}
                               onClick={() => handleStockEdit(item.id, item.stock || 0)}
                               title="Edit stock quantity"
                             >
@@ -846,8 +845,8 @@ const InventoryManagement = () => {
                     </td>
                     <td style={styles.td}>
                       <div style={styles.priceContainer}>
-                        <div style={styles.priceValue}>₱{item.price?.toLocaleString() || 0}</div>
-                        <div style={styles.pricePerUnit}>
+                        <div style={{...styles.priceValue, color: '#0077b6'}}>₱{item.price?.toLocaleString() || 0}</div>
+                        <div style={{...styles.pricePerUnit, color: '#0077b6'}}>
                           per unit
                         </div>
                       </div>
@@ -866,7 +865,7 @@ const InventoryManagement = () => {
                     <td style={styles.td}>
                       <div style={styles.actionMenu}>
                         <button
-                          style={styles.actionMenuButton}
+                          style={{...styles.actionMenuButton, color: '#0077b6'}}
                           onClick={() => setActionMenuOpen(actionMenuOpen === item.id ? null : item.id)}
                         >
                           <FaEllipsisV />
@@ -875,7 +874,7 @@ const InventoryManagement = () => {
                         {actionMenuOpen === item.id && (
                           <div style={styles.actionDropdown}>
                             <div style={styles.actionDropdownHeader}>
-                              <span style={styles.actionDropdownTitle}>Actions</span>
+                              <span style={{...styles.actionDropdownTitle, color: '#0077b6'}}>Actions</span>
                               <button
                                 style={styles.closeDropdownButton}
                                 onClick={() => setActionMenuOpen(null)}
@@ -884,7 +883,7 @@ const InventoryManagement = () => {
                               </button>
                             </div>
                             <button
-                              style={styles.actionDropdownItem}
+                              style={{...styles.actionDropdownItem, color: '#0077b6'}}
                               onClick={() => {
                                 handleEditProduct(item);
                                 setActionMenuOpen(null);
@@ -893,7 +892,7 @@ const InventoryManagement = () => {
                               <FaEdit style={{ marginRight: '8px' }} /> Edit Product
                             </button>
                             <button
-                              style={styles.actionDropdownItem}
+                              style={{...styles.actionDropdownItem, color: '#0077b6'}}
                               onClick={() => {
                                 handleDeleteClick(item);
                                 setActionMenuOpen(null);
@@ -902,7 +901,7 @@ const InventoryManagement = () => {
                               <FaTrash style={{ marginRight: '8px' }} /> Delete Product
                             </button>
                             <button
-                              style={styles.actionDropdownItem}
+                              style={{...styles.actionDropdownItem, color: '#0077b6'}}
                               onClick={() => {
                                 adjustStock(item.id, 5);
                                 setActionMenuOpen(null);
@@ -911,7 +910,7 @@ const InventoryManagement = () => {
                               <FaPlusCircle style={{ marginRight: '8px' }} /> Add 5 Units
                             </button>
                             <button
-                              style={styles.actionDropdownItem}
+                              style={{...styles.actionDropdownItem, color: '#0077b6'}}
                               onClick={() => {
                                 handleStockEdit(item.id, item.stock || 0);
                                 setActionMenuOpen(null);
@@ -931,7 +930,7 @@ const InventoryManagement = () => {
                             <FaEdit />
                           </button>
                           <button
-                            style={styles.secondaryActionButton}
+                            style={{...styles.secondaryActionButton, background: '#10b981'}}
                             onClick={() => adjustStock(item.id, 1)}
                             title="Add stock"
                           >
@@ -968,26 +967,11 @@ const InventoryManagement = () => {
   );
 };
 
-// Helper function for category colors
-const getCategoryColor = (categoryName) => {
-  const colors = {
-    'Pool Equipment': '#667eea, #764ba2',
-    'Cleaning Supplies': '#f093fb, #f5576c',
-    'Tools': '#f6d365, #fda085',
-    'Accessories': '#4facfe, #00f2fe',
-    'Parts': '#43e97b, #38f9d7',
-    'Default': '#a78bfa, #7c3aed'
-  };
-  
-  return colors[categoryName] || colors['Default'];
-};
-
 const styles = {
   container: {
     background: 'white',
     padding: '30px',
     borderRadius: '16px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
     minHeight: 'calc(100vh - 60px)',
   },
   header: {
@@ -1002,9 +986,7 @@ const styles = {
   },
   title: {
     fontSize: '32px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
+    color: '#0077b6',
     margin: '0 0 8px 0',
     fontWeight: '700',
     display: 'flex',
@@ -1012,8 +994,9 @@ const styles = {
   },
   subtitle: {
     fontSize: '16px',
-    color: '#6b7280',
+    color: '#0077b6',
     margin: 0,
+    opacity: 0.8
   },
   headerActions: {
     display: 'flex',
@@ -1021,7 +1004,7 @@ const styles = {
     flexWrap: 'wrap',
   },
   addButton: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: '#0077b6',
     color: 'white',
     border: 'none',
     padding: '12px 24px',
@@ -1031,11 +1014,13 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    boxShadow: '0 4px 6px rgba(102, 126, 234, 0.2)',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
   },
   exportButton: {
-    background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    background: '#0077b6',
     color: 'white',
     border: 'none',
     padding: '12px 24px',
@@ -1045,8 +1030,10 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    boxShadow: '0 4px 6px rgba(79, 172, 254, 0.2)',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
   },
   loading: {
     textAlign: 'center',
@@ -1056,7 +1043,7 @@ const styles = {
     width: '40px',
     height: '40px',
     border: '4px solid #e5e7eb',
-    borderTop: '4px solid #667eea',
+    borderTop: '4px solid #0077b6',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
     margin: '0 auto 20px',
@@ -1071,629 +1058,640 @@ const styles = {
     background: 'white',
     padding: '20px',
     borderRadius: '12px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+    border: '1px solid #0077b6',
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
-    border: '1px solid #f3f4f6',
-    transition: 'transform 0.2s, box-shadow 0.2s',
+    transition: 'all 0.2s',
   },
-  Label: {
-fontSize: '14px',
-color: '#6b7280',
-marginBottom: '4px',
-},
-statNumber: {
-fontSize: '24px',
-fontWeight: '700',
-color: '#1f2937',
-},
-filters: {
-background: 'white',
-padding: '20px',
-borderRadius: '12px',
-marginBottom: '24px',
-border: '1px solid #e5e7eb',
-boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-},
-searchBox: {
-position: 'relative',
-marginBottom: '16px',
-},
-searchInput: {
-width: '100%',
-padding: '12px 12px 12px 40px',
-border: '1px solid #d1d5db',
-borderRadius: '8px',
-fontSize: '14px',
-transition: 'border-color 0.2s',
-},
-filterControls: {
-display: 'flex',
-gap: '12px',
-flexWrap: 'wrap',
-},
-filterSelect: {
-padding: '10px 36px 10px 12px',
-border: '1px solid #d1d5db',
-borderRadius: '8px',
-fontSize: '14px',
-background: 'white',
-cursor: 'pointer',
-appearance: 'none',
-backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg\" viewBox="0 0 24 24" fill="%236b7280"%3E%3Cpath d="M7 10l5 5 5-5z"/%3E%3C/svg%3E")',
-backgroundRepeat: 'no-repeat',
-backgroundPosition: 'right 12px center',
-backgroundSize: '16px',
-},
-clearButton: {
-padding: '10px 16px',
-background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-border: 'none',
-borderRadius: '8px',
-fontSize: '14px',
-fontWeight: '500',
-color: '#374151',
-cursor: 'pointer',
-display: 'flex',
-alignItems: 'center',
-gap: '6px',
-transition: 'all 0.2s',
-},
-formContainer: {
-background: 'white',
-border: '1px solid #e5e7eb',
-borderRadius: '12px',
-padding: '24px',
-marginBottom: '30px',
-boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-animation: 'fadeIn 0.3s ease-out',
-},
-formHeader: {
-display: 'flex',
-justifyContent: 'space-between',
-alignItems: 'center',
-marginBottom: '24px',
-paddingBottom: '16px',
-borderBottom: '1px solid #e5e7eb',
-},
-closeButton: {
-background: 'none',
-border: 'none',
-color: '#6b7280',
-cursor: 'pointer',
-fontSize: '18px',
-padding: '8px',
-borderRadius: '50%',
-transition: 'background-color 0.2s',
-},
-form: {
-display: 'flex',
-flexDirection: 'column',
-gap: '20px',
-},
-formGrid: {
-display: 'grid',
-gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-gap: '20px',
-marginBottom: '20px',
-},
-formGroup: {
-display: 'flex',
-flexDirection: 'column',
-gap: '8px',
-},
-formGroupFull: {
-gridColumn: '1 / -1',
-display: 'flex',
-flexDirection: 'column',
-gap: '8px',
-},
-label: {
-fontSize: '14px',
-fontWeight: '500',
-color: '#374151',
-},
-input: {
-padding: '10px 12px',
-border: '1px solid #d1d5db',
-borderRadius: '8px',
-fontSize: '14px',
-transition: 'border-color 0.2s',
-},
-textarea: {
-padding: '12px',
-border: '1px solid #d1d5db',
-borderRadius: '8px',
-fontSize: '14px',
-resize: 'vertical',
-minHeight: '80px',
-transition: 'border-color 0.2s',
-},
-imagePreview: {
-marginTop: '12px',
-border: '1px solid #e5e7eb',
-borderRadius: '8px',
-overflow: 'hidden',
-position: 'relative',
-minHeight: '120px',
-},
-previewImage: {
-width: '100%',
-height: '120px',
-objectFit: 'cover',
-},
-imagePlaceholder: {
-position: 'absolute',
-top: 0,
-left: 0,
-right: 0,
-bottom: 0,
-display: 'flex',
-flexDirection: 'column',
-alignItems: 'center',
-justifyContent: 'center',
-background: '#f9fafb',
-color: '#6b7280',
-gap: '8px',
-},
-formActions: {
-display: 'flex',
-justifyContent: 'flex-end',
-gap: '12px',
-paddingTop: '20px',
-borderTop: '1px solid #e5e7eb',
-},
-cancelButton: {
-padding: '10px 20px',
-background: '#f3f4f6',
-border: '1px solid #d1d5db',
-borderRadius: '8px',
-fontSize: '14px',
-fontWeight: '500',
-color: '#374151',
-cursor: 'pointer',
-display: 'flex',
-alignItems: 'center',
-gap: '6px',
-transition: 'all 0.2s',
-},
-submitButton: {
-padding: '10px 24px',
-background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-color: 'white',
-border: 'none',
-borderRadius: '8px',
-fontSize: '14px',
-fontWeight: '600',
-cursor: 'pointer',
-display: 'flex',
-alignItems: 'center',
-gap: '6px',
-transition: 'transform 0.2s, box-shadow 0.2s',
-boxShadow: '0 4px 6px rgba(102, 126, 234, 0.2)',
-},
-modalOverlay: {
-position: 'fixed',
-top: 0,
-left: 0,
-right: 0,
-bottom: 0,
-background: 'rgba(0, 0, 0, 0.5)',
-display: 'flex',
-alignItems: 'center',
-justifyContent: 'center',
-zIndex: 1000,
-animation: 'fadeIn 0.2s ease-out',
-},
-confirmModal: {
-background: 'white',
-borderRadius: '12px',
-padding: '24px',
-maxWidth: '500px',
-width: '90%',
-boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-animation: 'slideIn 0.3s ease-out',
-},
-modalHeader: {
-display: 'flex',
-alignItems: 'center',
-gap: '12px',
-marginBottom: '16px',
-},
-modalTitle: {
-fontSize: '20px',
-fontWeight: '600',
-color: '#1f2937',
-margin: 0,
-},
-confirmMessage: {
-color: '#6b7280',
-marginBottom: '20px',
-lineHeight: '1.5',
-},
-productInfo: {
-background: '#f9fafb',
-padding: '16px',
-borderRadius: '8px',
-marginBottom: '24px',
-},
-productInfoRow: {
-display: 'flex',
-justifyContent: 'space-between',
-padding: '6px 0',
-fontSize: '14px',
-},
-productInfoLabel: {
-color: '#6b7280',
-},
-productInfoValue: {
-color: '#1f2937',
-fontWeight: '500',
-},
-modalActions: {
-display: 'flex',
-justifyContent: 'flex-end',
-gap: '12px',
-},
-modalCancelButton: {
-padding: '10px 20px',
-background: '#f3f4f6',
-border: '1px solid #d1d5db',
-borderRadius: '8px',
-fontSize: '14px',
-fontWeight: '500',
-color: '#374151',
-cursor: 'pointer',
-display: 'flex',
-alignItems: 'center',
-gap: '6px',
-transition: 'all 0.2s',
-},
-modalDeleteButton: {
-padding: '10px 20px',
-background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-color: 'white',
-border: 'none',
-borderRadius: '8px',
-fontSize: '14px',
-fontWeight: '600',
-cursor: 'pointer',
-display: 'flex',
-alignItems: 'center',
-gap: '6px',
-transition: 'transform 0.2s, box-shadow 0.2s',
-boxShadow: '0 4px 6px rgba(239, 68, 68, 0.2)',
-},
-tableContainer: {
-overflowX: 'auto',
-background: 'white',
-borderRadius: '12px',
-border: '1px solid #e5e7eb',
-boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-},
-table: {
-width: '100%',
-borderCollapse: 'collapse',
-},
-th: {
-padding: '16px 20px',
-textAlign: 'left',
-background: '#f9fafb',
-color: '#374151',
-fontWeight: '600',
-fontSize: '14px',
-borderBottom: '1px solid #e5e7eb',
-cursor: 'pointer',
-userSelect: 'none',
-transition: 'background-color 0.2s',
-},
-tr: {
-borderBottom: '1px solid #f3f4f6',
-transition: 'background-color 0.2s',
-},
-td: {
-padding: '16px 20px',
-verticalAlign: 'middle',
-},
-emptyCell: {
-textAlign: 'center',
-padding: '60px 20px',
-color: '#6b7280',
-},
-productCell: {
-display: 'flex',
-alignItems: 'center',
-gap: '12px',
-},
-productImage: {
-width: '48px',
-height: '48px',
-borderRadius: '8px',
-objectFit: 'cover',
-border: '1px solid #e5e7eb',
-},
-productImagePlaceholder: {
-width: '48px',
-height: '48px',
-borderRadius: '8px',
-background: '#f3f4f6',
-display: 'flex',
-alignItems: 'center',
-justifyContent: 'center',
-border: '1px solid #e5e7eb',
-},
-productName: {
-fontSize: '14px',
-fontWeight: '600',
-color: '#1f2937',
-marginBottom: '4px',
-},
-productDescription: {
-fontSize: '12px',
-color: '#6b7280',
-lineHeight: '1.4',
-maxWidth: '300px',
-overflow: 'hidden',
-textOverflow: 'ellipsis',
-display: '-webkit-box',
-WebkitLineClamp: 2,
-WebkitBoxOrient: 'vertical',
-},
-productId: {
-fontSize: '11px',
-color: '#9ca3af',
-marginTop: '2px',
-},
-categoryBadge: {
-display: 'inline-flex',
-alignItems: 'center',
-padding: '6px 12px',
-borderRadius: '20px',
-fontSize: '12px',
-fontWeight: '500',
-color: 'white',
-textShadow: '0 1px 1px rgba(0,0,0,0.1)',
-boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-},
-stockDisplay: {
-display: 'flex',
-alignItems: 'center',
-justifyContent: 'space-between',
-},
-stockValueContainer: {
-display: 'flex',
-alignItems: 'center',
-gap: '8px',
-},
-stockIndicator: {
-width: '8px',
-height: '8px',
-borderRadius: '50%',
-},
-stockValue: {
-fontSize: '16px',
-fontWeight: '600',
-color: '#1f2937',
-},
-stockActions: {
-display: 'flex',
-gap: '4px',
-},
-quickActionButton: {
-background: 'transparent',
-border: 'none',
-color: '#10b981',
-cursor: 'pointer',
-fontSize: '16px',
-padding: '4px',
-borderRadius: '4px',
-transition: 'background-color 0.2s',
-},
-editStockTrigger: {
-background: 'transparent',
-border: 'none',
-color: '#6b7280',
-cursor: 'pointer',
-fontSize: '14px',
-padding: '4px',
-borderRadius: '4px',
-transition: 'background-color 0.2s',
-},
-stockEditContainer: {
-background: '#f9fafb',
-border: '1px solid #e5e7eb',
-borderRadius: '8px',
-padding: '12px',
-animation: 'slideIn 0.2s ease-out',
-},
-stockEditHeader: {
-display: 'flex',
-justifyContent: 'space-between',
-alignItems: 'center',
-marginBottom: '8px',
-},
-stockEditLabel: {
-fontSize: '12px',
-fontWeight: '500',
-color: '#6b7280',
-},
-closeEditButton: {
-background: 'none',
-border: 'none',
-color: '#9ca3af',
-cursor: 'pointer',
-padding: '2px',
-borderRadius: '50%',
-},
-stockEditControls: {
-display: 'flex',
-flexDirection: 'column',
-gap: '8px',
-},
-stockInput: {
-padding: '8px 12px',
-border: '1px solid #d1d5db',
-borderRadius: '6px',
-fontSize: '14px',
-width: '100%',
-},
-stockEditButtons: {
-display: 'flex',
-gap: '8px',
-},
-quickAddButton: {
-flex: 1,
-padding: '6px 12px',
-background: '#f3f4f6',
-border: '1px solid #d1d5db',
-borderRadius: '6px',
-fontSize: '12px',
-fontWeight: '500',
-color: '#374151',
-cursor: 'pointer',
-transition: 'all 0.2s',
-},
-saveEditButton: {
-flex: 1,
-padding: '6px 12px',
-background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-color: 'white',
-border: 'none',
-borderRadius: '6px',
-fontSize: '12px',
-fontWeight: '500',
-cursor: 'pointer',
-display: 'flex',
-alignItems: 'center',
-justifyContent: 'center',
-gap: '4px',
-transition: 'transform 0.2s, box-shadow 0.2s',
-},
-priceContainer: {
-display: 'flex',
-flexDirection: 'column',
-gap: '4px',
-},
-priceValue: {
-fontSize: '16px',
-fontWeight: '600',
-color: '#1f2937',
-},
-pricePerUnit: {
-fontSize: '12px',
-color: '#6b7280',
-},
-statusBadge: {
-display: 'inline-flex',
-alignItems: 'center',
-padding: '8px 12px',
-borderRadius: '8px',
-fontSize: '12px',
-fontWeight: '500',
-gap: '6px',
-boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-},
-statusIcon: {
-fontSize: '12px',
-},
-statusText: {
-fontSize: '12px',
-fontWeight: '600',
-},
-actionMenu: {
-position: 'relative',
-display: 'flex',
-alignItems: 'center',
-gap: '8px',
-},
-actionMenuButton: {
-background: 'transparent',
-border: 'none',
-color: '#6b7280',
-cursor: 'pointer',
-fontSize: '16px',
-padding: '8px',
-borderRadius: '6px',
-transition: 'background-color 0.2s',
-},
-actionDropdown: {
-position: 'absolute',
-top: '100%',
-right: 0,
-background: 'white',
-border: '1px solid #e5e7eb',
-borderRadius: '8px',
-boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-minWidth: '200px',
-zIndex: 10,
-animation: 'fadeIn 0.2s ease-out',
-},
-actionDropdownHeader: {
-display: 'flex',
-justifyContent: 'space-between',
-alignItems: 'center',
-padding: '12px 16px',
-borderBottom: '1px solid #e5e7eb',
-},
-actionDropdownTitle: {
-fontSize: '12px',
-fontWeight: '600',
-color: '#374151',
-textTransform: 'uppercase',
-letterSpacing: '0.5px',
-},
-closeDropdownButton: {
-background: 'none',
-border: 'none',
-color: '#9ca3af',
-cursor: 'pointer',
-padding: '2px',
-borderRadius: '50%',
-},
-actionDropdownItem: {
-display: 'flex',
-alignItems: 'center',
-width: '100%',
-padding: '12px 16px',
-background: 'none',
-border: 'none',
-color: '#374151',
-fontSize: '14px',
-cursor: 'pointer',
-transition: 'background-color 0.2s',
-borderBottom: '1px solid #f3f4f6',
-},
-quickActions: {
-display: 'flex',
-gap: '4px',
-},
-primaryActionButton: {
-background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-color: 'white',
-border: 'none',
-cursor: 'pointer',
-fontSize: '14px',
-padding: '8px',
-borderRadius: '6px',
-display: 'flex',
-alignItems: 'center',
-justifyContent: 'center',
-transition: 'transform 0.2s, box-shadow 0.2s',
-},
-secondaryActionButton: {
-background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-color: 'white',
-border: 'none',
-cursor: 'pointer',
-fontSize: '14px',
-padding: '8px',
-borderRadius: '6px',
-display: 'flex',
-alignItems: 'center',
-justifyContent: 'center',
-transition: 'transform 0.2s, box-shadow 0.2s',
-},
+  statLabel: {
+    fontSize: '14px',
+    color: '#0077b6',
+    marginBottom: '4px',
+  },
+  statNumber: {
+    fontSize: '24px',
+    fontWeight: '700',
+    color: '#0077b6',
+  },
+  filters: {
+    background: 'white',
+    padding: '20px',
+    borderRadius: '12px',
+    marginBottom: '24px',
+    border: '1px solid #0077b6',
+  },
+  searchBox: {
+    position: 'relative',
+    marginBottom: '16px',
+  },
+  searchInput: {
+    width: '100%',
+    padding: '12px 12px 12px 40px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    transition: 'border-color 0.2s',
+  },
+  filterControls: {
+    display: 'flex',
+    gap: '12px',
+    flexWrap: 'wrap',
+  },
+  filterSelect: {
+    padding: '10px 36px 10px 12px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    background: 'white',
+    cursor: 'pointer',
+    appearance: 'none',
+    backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"%230077b6\"%3E%3Cpath d=\"M7 10l5 5 5-5z\"/%3E%3C/svg%3E")',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 12px center',
+    backgroundSize: '16px',
+  },
+  clearButton: {
+    padding: '10px 16px',
+    background: '#e5e7eb',
+    color: '#0077b6',
+    border: '1px solid #0077b6',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
+  formContainer: {
+    background: 'white',
+    border: '1px solid #0077b6',
+    borderRadius: '12px',
+    padding: '24px',
+    marginBottom: '30px',
+    animation: 'fadeIn 0.3s ease-out',
+  },
+  formHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '24px',
+    paddingBottom: '16px',
+    borderBottom: '1px solid #0077b6',
+  },
+  closeButton: {
+    background: 'none',
+    border: 'none',
+    color: '#0077b6',
+    cursor: 'pointer',
+    fontSize: '18px',
+    padding: '8px',
+    borderRadius: '50%',
+    transition: 'background-color 0.2s',
+    ':hover': {
+      opacity: 0.8
+    }
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+  },
+  formGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '20px',
+    marginBottom: '20px',
+  },
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  formGroupFull: {
+    gridColumn: '1 / -1',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '500',
+  },
+  input: {
+    padding: '10px 12px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    transition: 'border-color 0.2s',
+  },
+  textarea: {
+    padding: '12px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    resize: 'vertical',
+    minHeight: '80px',
+    transition: 'border-color 0.2s',
+  },
+  imagePreview: {
+    marginTop: '12px',
+    border: '1px solid #0077b6',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    position: 'relative',
+    minHeight: '120px',
+  },
+  previewImage: {
+    width: '100%',
+    height: '120px',
+    objectFit: 'cover',
+  },
+  imagePlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#f9fafb',
+    gap: '8px',
+  },
+  formActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+    paddingTop: '20px',
+    borderTop: '1px solid #0077b6',
+  },
+  cancelButton: {
+    padding: '10px 20px',
+    background: '#e5e7eb',
+    border: '1px solid #0077b6',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#0077b6',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
+  submitButton: {
+    padding: '10px 24px',
+    background: '#0077b6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    animation: 'fadeIn 0.2s ease-out',
+  },
+  confirmModal: {
+    background: 'white',
+    borderRadius: '12px',
+    padding: '24px',
+    maxWidth: '500px',
+    width: '90%',
+    animation: 'slideIn 0.3s ease-out',
+  },
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '16px',
+  },
+  modalTitle: {
+    fontSize: '20px',
+    fontWeight: '600',
+    margin: 0,
+  },
+  confirmMessage: {
+    marginBottom: '20px',
+    lineHeight: '1.5',
+  },
+  productInfo: {
+    background: '#f9fafb',
+    padding: '16px',
+    borderRadius: '8px',
+    marginBottom: '24px',
+  },
+  productInfoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '6px 0',
+    fontSize: '14px',
+  },
+  productInfoLabel: {
+    fontWeight: '500',
+  },
+  productInfoValue: {
+    fontWeight: '500',
+  },
+  modalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '12px',
+  },
+  modalCancelButton: {
+    padding: '10px 20px',
+    background: '#e5e7eb',
+    border: '1px solid #0077b6',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#0077b6',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
+  modalDeleteButton: {
+    padding: '10px 20px',
+    background: '#0077b6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
+  tableContainer: {
+    overflowX: 'auto',
+    background: 'white',
+    borderRadius: '12px',
+    border: '1px solid #0077b6',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+  },
+  th: {
+    padding: '16px 20px',
+    textAlign: 'left',
+    background: '#f9fafb',
+    fontWeight: '600',
+    fontSize: '14px',
+    borderBottom: '1px solid #0077b6',
+    cursor: 'pointer',
+    userSelect: 'none',
+    transition: 'background-color 0.2s',
+  },
+  tr: {
+    borderBottom: '1px solid #e5e7eb',
+    transition: 'background-color 0.2s',
+  },
+  td: {
+    padding: '16px 20px',
+    verticalAlign: 'middle',
+  },
+  emptyCell: {
+    textAlign: 'center',
+    padding: '60px 20px',
+  },
+  productCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  productImage: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '8px',
+    objectFit: 'cover',
+    border: '1px solid #0077b6',
+  },
+  productImagePlaceholder: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '8px',
+    background: '#f3f4f6',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid #0077b6',
+  },
+  productName: {
+    fontSize: '14px',
+    fontWeight: '600',
+    marginBottom: '4px',
+  },
+  productDescription: {
+    fontSize: '12px',
+    lineHeight: '1.4',
+    maxWidth: '300px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+  },
+  productId: {
+    fontSize: '11px',
+    marginTop: '2px',
+  },
+  categoryBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '6px 12px',
+    borderRadius: '20px',
+    fontSize: '12px',
+    fontWeight: '500',
+    color: 'white',
+  },
+  stockDisplay: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  stockValueContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  stockIndicator: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+  },
+  stockValue: {
+    fontSize: '16px',
+    fontWeight: '600',
+  },
+  stockActions: {
+    display: 'flex',
+    gap: '4px',
+  },
+  quickActionButton: {
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '16px',
+    padding: '4px',
+    borderRadius: '4px',
+    transition: 'background-color 0.2s',
+    ':hover': {
+      opacity: 0.8
+    }
+  },
+  editStockTrigger: {
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '14px',
+    padding: '4px',
+    borderRadius: '4px',
+    transition: 'background-color 0.2s',
+    ':hover': {
+      opacity: 0.8
+    }
+  },
+  stockEditContainer: {
+    background: '#f9fafb',
+    border: '1px solid #0077b6',
+    borderRadius: '8px',
+    padding: '12px',
+    animation: 'slideIn 0.2s ease-out',
+  },
+  stockEditHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
+  },
+  stockEditLabel: {
+    fontSize: '12px',
+    fontWeight: '500',
+  },
+  closeEditButton: {
+    background: 'none',
+    border: 'none',
+    color: '#0077b6',
+    cursor: 'pointer',
+    padding: '2px',
+    borderRadius: '50%',
+    ':hover': {
+      opacity: 0.8
+    }
+  },
+  stockEditControls: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  stockInput: {
+    padding: '8px 12px',
+    borderRadius: '6px',
+    fontSize: '14px',
+    width: '100%',
+  },
+  stockEditButtons: {
+    display: 'flex',
+    gap: '8px',
+  },
+  quickAddButton: {
+    flex: 1,
+    padding: '6px 12px',
+    background: '#e5e7eb',
+    border: '1px solid #0077b6',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '500',
+    color: '#0077b6',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
+  saveEditButton: {
+    flex: 1,
+    padding: '6px 12px',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
+  priceContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  priceValue: {
+    fontSize: '16px',
+    fontWeight: '600',
+  },
+  pricePerUnit: {
+    fontSize: '12px',
+  },
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '8px 12px',
+    borderRadius: '8px',
+    fontSize: '12px',
+    fontWeight: '500',
+    gap: '6px',
+  },
+  statusIcon: {
+    fontSize: '12px',
+  },
+  statusText: {
+    fontSize: '12px',
+    fontWeight: '600',
+  },
+  actionMenu: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  actionMenuButton: {
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '16px',
+    padding: '8px',
+    borderRadius: '6px',
+    transition: 'background-color 0.2s',
+    ':hover': {
+      opacity: 0.8
+    }
+  },
+  actionDropdown: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    background: 'white',
+    border: '1px solid #0077b6',
+    borderRadius: '8px',
+    minWidth: '200px',
+    zIndex: 10,
+    animation: 'fadeIn 0.2s ease-out',
+  },
+  actionDropdownHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px 16px',
+    borderBottom: '1px solid #0077b6',
+  },
+  actionDropdownTitle: {
+    fontSize: '12px',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  closeDropdownButton: {
+    background: 'none',
+    border: 'none',
+    color: '#0077b6',
+    cursor: 'pointer',
+    padding: '2px',
+    borderRadius: '50%',
+    ':hover': {
+      opacity: 0.8
+    }
+  },
+  actionDropdownItem: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    padding: '12px 16px',
+    background: 'none',
+    border: 'none',
+    fontSize: '14px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+    borderBottom: '1px solid #f3f4f6',
+    ':hover': {
+      backgroundColor: '#f9fafb'
+    }
+  },
+  quickActions: {
+    display: 'flex',
+    gap: '4px',
+  },
+  primaryActionButton: {
+    background: '#0077b6',
+    color: 'white',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '14px',
+    padding: '8px',
+    borderRadius: '6px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
+  secondaryActionButton: {
+    color: 'white',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '14px',
+    padding: '8px',
+    borderRadius: '6px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s',
+    ':hover': {
+      opacity: 0.9
+    }
+  },
 };
 
 export default InventoryManagement;

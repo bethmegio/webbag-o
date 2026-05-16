@@ -1,4 +1,4 @@
-// src/supabase.js - Complete version with admin client
+// src/supabase.js - Updated with your actual credentials
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://ohcpyffkzopsmktqudlh.supabase.co';
@@ -22,3 +22,41 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     detectSessionInUrl: false,
   },
 });
+
+// Test connection function - add this
+export const testConnection = async () => {
+  console.log('🔌 Testing Supabase connection...');
+  
+  try {
+    // First test direct API access
+    const apiTest = await fetch(`${supabaseUrl}/rest/v1/`, {
+      headers: { 'apikey': supabaseAnonKey }
+    });
+    
+    console.log(`🌐 Direct API: ${apiTest.status} ${apiTest.statusText}`);
+    
+    if (!apiTest.ok) {
+      throw new Error(`API responded with ${apiTest.status}`);
+    }
+    
+    // Test Supabase client with a simple query
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .limit(1);
+    
+    if (error) {
+      console.log(`⚠️ Supabase client connected, but: ${error.message}`);
+      console.log('💡 You may need to create the bookings table');
+      return { connected: true, tablesExist: false, error };
+    }
+    
+    console.log('✅ Connected successfully!');
+    console.log(`📊 Found ${data?.length || 0} bookings`);
+    
+    return { connected: true, tablesExist: true, data };
+  } catch (error) {
+    console.error('❌ Connection failed:', error.message);
+    return { connected: false, error: error.message };
+  }
+};
