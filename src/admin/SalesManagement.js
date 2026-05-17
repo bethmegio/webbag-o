@@ -1,80 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { 
-  // Add these icons for the chatbox:
-  FaTimes,           // For close button (×)
-  FaPhoneAlt,        // For phone/call button
-  FaEnvelopeOpen,    // For email button
-  FaComments,        // For chat/message icon
-  FaPaperPlane,
-  FaCalendarCheck, 
-  FaShoppingBag,
-  FaQuestionCircle, 
-  FaFileInvoice, 
-  FaUsers, 
-  FaChartBar,
-  FaDollarSign,
-  FaShoppingCart,
-  FaCheckCircle,
-  FaClock,
-  FaTimesCircle,
-  FaArrowUp,
-  FaArrowDown,
-  FaSearch,
-  FaFilter,
-  FaPrint,
-  FaDownload,
-  FaEye,
-  FaTrash,
-  FaEdit,
-  FaPlus,
-  FaChartLine,
-  FaStore,
-  FaMobileAlt,
-  FaTools,
-  FaCar,
-  FaCarAlt,
-  FaOilCan,
-  FaShieldAlt,
-  FaUserCircle,
-  FaTag,
-  FaSync,
-  FaPhone,
-  FaEnvelope,
-  FaUser,
-  FaBox,
-  FaStar,
-  FaThumbsUp,
-  FaThumbsDown,
-  FaStarHalfAlt,
-  FaRegStar,
-  FaComment,
-  FaExclamationCircle,
-  FaCalendarAlt,
-  FaSort,
-  FaSortUp,
-  FaSortDown,
-  FaReceipt,
-  FaCreditCard,
-  FaTruck,
-  FaMapMarkerAlt,
-  FaListAlt,
-  FaSwimmingPool,
-  FaWrench,
-  FaPaintRoller,
-  FaTint,
-  FaLeaf,
-  FaCalendarDay,
-  FaCalendar,
-  FaList,
-  FaCalendarWeek,
-  // ADD THESE MISSING IMPORTS (but make sure they're not duplicates):
-  FaUserPlus,
-  FaCheck,
-  FaChevronDown,
-  FaFileCsv,
-  FaBan,
-  FaExclamationTriangle
+  FaTimes, FaPhoneAlt, FaEnvelopeOpen, FaComments, FaPaperPlane,
+  FaCalendarCheck, FaShoppingBag, FaQuestionCircle, FaFileInvoice, 
+  FaUsers, FaChartBar, FaDollarSign, FaShoppingCart, FaCheckCircle,
+  FaClock, FaTimesCircle, FaArrowUp, FaArrowDown, FaSearch, FaFilter,
+  FaPrint, FaDownload, FaEye, FaTrash, FaEdit, FaPlus, FaChartLine,
+  FaStore, FaMobileAlt, FaTools, FaCar, FaCarAlt, FaOilCan, FaShieldAlt,
+  FaUserCircle, FaTag, FaSync, FaPhone, FaEnvelope, FaUser, FaBox,
+  FaStar, FaThumbsUp, FaThumbsDown, FaStarHalfAlt, FaRegStar, FaComment,
+  FaExclamationCircle, FaCalendarAlt, FaSort, FaSortUp, FaSortDown,
+  FaReceipt, FaCreditCard, FaTruck, FaMapMarkerAlt, FaListAlt, FaSwimmingPool,
+  FaWrench, FaPaintRoller, FaTint, FaLeaf, FaCalendarDay, FaCalendar,
+  FaList, FaCalendarWeek, FaUserPlus, FaCheck, FaChevronDown, FaFileCsv,
+  FaBan, FaExclamationTriangle, FaReply
 } from 'react-icons/fa';
 
 // ====================
@@ -197,13 +136,19 @@ const StatCard = ({ icon: Icon, title, value, color, bgColor, subtitle, onClick 
       alignItems: 'center',
       gap: '16px',
       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-      cursor: onClick ? 'pointer' : 'default',
-      ':hover': onClick ? {
-        transform: 'translateY(-2px)',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-      } : {}
+      cursor: onClick ? 'pointer' : 'default'
     }}
     onClick={onClick}
+    onMouseEnter={(e) => {
+      if (onClick) {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      }
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    }}
   >
     <div style={{
       backgroundColor: bgColor,
@@ -244,6 +189,362 @@ const StatCard = ({ icon: Icon, title, value, color, bgColor, subtitle, onClick 
 );
 
 // ====================
+// REVIEW REPLY MODAL COMPONENT (FIXED)
+// ====================
+
+const ReviewReplyModal = ({ review, onClose, onReplySent, isServiceReview = false }) => {
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [existingReply, setExistingReply] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchExistingReply();
+  }, [review.id, isServiceReview]);
+
+  const fetchExistingReply = async () => {
+    try {
+      const tableName = isServiceReview ? 'service_review_replies' : 'review_replies';
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('review_id', review.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setExistingReply(data);
+        setReplyText(data.reply_text);
+      }
+    } catch (error) {
+      console.error('Error fetching existing reply:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!replyText.trim()) {
+      alert('Please enter a reply message');
+      return;
+    }
+
+    try {
+      setSending(true);
+      
+      const replyData = {
+        review_id: review.id,
+        reply_text: replyText.trim(),
+        admin_name: 'Admin',
+        updated_at: new Date().toISOString()
+      };
+
+      let result;
+      const tableName = isServiceReview ? 'service_review_replies' : 'review_replies';
+
+      if (existingReply) {
+        // Update existing reply
+        result = await supabase
+          .from(tableName)
+          .update(replyData)
+          .eq('id', existingReply.id);
+      } else {
+        // Insert new reply
+        replyData.created_at = new Date().toISOString();
+        result = await supabase
+          .from(tableName)
+          .insert([replyData]);
+      }
+
+      if (result.error) throw result.error;
+
+      // Also update the review's replied status
+      const reviewTable = isServiceReview ? 'service_reviews' : 'reviews';
+      await supabase
+        .from(reviewTable)
+        .update({ 
+          admin_replied: true,
+          admin_replied_at: new Date().toISOString()
+        })
+        .eq('id', review.id);
+
+      alert(existingReply ? 'Reply updated successfully!' : 'Reply sent successfully!');
+      onReplySent();
+      onClose();
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      alert('Error sending reply: ' + error.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // FIXED: Proper delete function for review reply modal
+  const handleDeleteReview = async () => {
+    if (!window.confirm('Are you sure you want to delete this review and all associated replies? This action cannot be undone.')) return;
+
+    try {
+      const reviewTable = isServiceReview ? 'service_reviews' : 'reviews';
+      const repliesTable = isServiceReview ? 'service_review_replies' : 'review_replies';
+      
+      // First delete any replies
+      const { error: repliesError } = await supabase
+        .from(repliesTable)
+        .delete()
+        .eq('review_id', review.id);
+      
+      if (repliesError) {
+        console.error('Error deleting replies:', repliesError);
+      }
+
+      // Delete conversations if they exist
+      const conversationsTable = isServiceReview ? 'service_review_conversations' : 'review_conversations';
+      const { error: convError } = await supabase
+        .from(conversationsTable)
+        .delete()
+        .eq('review_id', review.id);
+      
+      if (convError && convError.code !== '42P01') {
+        console.error('Error deleting conversations:', convError);
+      }
+
+      // Finally delete the review
+      const { error } = await supabase
+        .from(reviewTable)
+        .delete()
+        .eq('id', review.id);
+
+      if (error) throw error;
+
+      alert('Review deleted successfully!');
+      onReplySent();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      alert('Error deleting review: ' + error.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000
+      }}>
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px' }}>
+          Loading...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '20px'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '30px',
+        maxWidth: '600px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflowY: 'auto'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px'
+        }}>
+          <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
+            {existingReply ? 'Edit Reply' : 'Reply to Review'}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#f3f4f6',
+              color: '#374151',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            <FaTimes />
+          </button>
+        </div>
+
+        {/* Original Review */}
+        <div style={{
+          backgroundColor: '#f9fafb',
+          padding: '16px',
+          borderRadius: '8px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                  {review.user_name || 'Anonymous'}
+                </span>
+                <div style={{ marginTop: '4px' }}>
+                  <StarRating rating={review.rating} size={12} />
+                </div>
+              </div>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                {new Date(review.created_at).toLocaleDateString()}
+              </span>
+            </div>
+            {review.comment && (
+              <p style={{ fontSize: '14px', color: '#4b5563', marginTop: '8px', lineHeight: '1.5' }}>
+                {review.comment}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Reply Input */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#374151',
+            marginBottom: '8px'
+          }}>
+            Your Reply
+          </label>
+          <textarea
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Write your reply to this review..."
+            rows={5}
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              resize: 'vertical',
+              fontFamily: 'inherit'
+            }}
+          />
+        </div>
+
+        {/* Existing Reply Info */}
+        {existingReply && (
+          <div style={{
+            backgroundColor: '#eff6ff',
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            fontSize: '13px',
+            color: '#1e40af'
+          }}>
+            <strong>Previously replied on:</strong> {new Date(existingReply.created_at).toLocaleString()}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={handleDeleteReview}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#fef2f2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaTrash />
+            Delete Review
+          </button>
+          
+          <button
+            onClick={onClose}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#f3f4f6',
+              color: '#374151',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+          
+          <button
+            onClick={handleSendReply}
+            disabled={!replyText.trim() || sending}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: replyText.trim() ? '#3b82f6' : '#d1d5db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: replyText.trim() ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {sending ? (
+              <>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+                Sending...
+              </>
+            ) : (
+              <>
+                <FaReply />
+                {existingReply ? 'Update Reply' : 'Send Reply'}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ====================
 // ORDER MANAGEMENT COMPONENT
 // ====================
 
@@ -257,7 +558,7 @@ const OrdersManagementTab = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [filter]);
+  }, [filter, search]);
 
   const fetchOrders = async () => {
     try {
@@ -298,7 +599,6 @@ const OrdersManagementTab = () => {
       
       if (error) {
         console.error('Error fetching orders:', error);
-        // Try without joins
         const { data: simpleData, error: simpleError } = await supabase
           .from('orders')
           .select('*')
@@ -428,7 +728,6 @@ const OrdersManagementTab = () => {
             </button>
           </div>
 
-          {/* Order Header */}
           <div style={{
             backgroundColor: '#f9fafb',
             padding: '20px',
@@ -516,7 +815,6 @@ const OrdersManagementTab = () => {
             </div>
           </div>
 
-          {/* Order Summary */}
           <div style={{ marginBottom: '24px' }}>
             <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
               Order Summary
@@ -574,7 +872,6 @@ const OrdersManagementTab = () => {
             </div>
           </div>
 
-          {/* Order Items */}
           <div style={{ marginBottom: '24px' }}>
             <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
               Order Items
@@ -634,7 +931,6 @@ const OrdersManagementTab = () => {
             )}
           </div>
 
-          {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             {order.status === 'pending' && (
               <>
@@ -718,7 +1014,6 @@ const OrdersManagementTab = () => {
 
   return (
     <div>
-      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -743,28 +1038,70 @@ const OrdersManagementTab = () => {
           </p>
         </div>
         
-        <button
-          onClick={fetchOrders}
-          style={{
-            padding: '10px 16px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <FaSync />
-          Refresh
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ position: 'relative' }}>
+            <FaSearch style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#9ca3af'
+            }} />
+            <input
+              type="text"
+              placeholder="Search orders..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                padding: '10px 12px 10px 36px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                width: '250px'
+              }}
+            />
+          </div>
+          
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            style={{
+              padding: '10px 12px',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: 'white'
+            }}
+          >
+            <option value="all">All Orders</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          
+          <button
+            onClick={fetchOrders}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FaSync />
+            Refresh
+          </button>
+        </div>
       </div>
 
-      {/* Order Stats */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -801,8 +1138,6 @@ const OrdersManagementTab = () => {
         />
       </div>
 
-
-      {/* Orders List */}
       <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
@@ -810,10 +1145,7 @@ const OrdersManagementTab = () => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         {loading ? (
-          <div style={{ 
-            padding: '48px 16px', 
-            textAlign: 'center' 
-          }}>
+          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
             <div style={{
               width: '40px',
               height: '40px',
@@ -826,23 +1158,12 @@ const OrdersManagementTab = () => {
             <p style={{ color: '#6b7280' }}>Loading orders...</p>
           </div>
         ) : orders.length === 0 ? (
-          <div style={{ 
-            padding: '48px 16px', 
-            textAlign: 'center' 
-          }}>
+          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
             <FaShoppingBag size={48} color="#d1d5db" />
-            <h3 style={{ 
-              margin: '16px 0 8px 0', 
-              color: '#111827', 
-              fontSize: '18px' 
-            }}>
+            <h3 style={{ margin: '16px 0 8px 0', color: '#111827', fontSize: '18px' }}>
               No Orders Found
             </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              fontSize: '14px',
-              margin: 0 
-            }}>
+            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
               {search ? 'No orders match your search criteria' : 'No orders available yet'}
             </p>
           </div>
@@ -854,18 +1175,16 @@ const OrdersManagementTab = () => {
               <div key={order.id} style={{
                 padding: '20px',
                 borderBottom: '1px solid #e5e7eb',
-                transition: 'background-color 0.2s ease',
-                ':hover': {
-                  backgroundColor: '#f9fafb'
-                }
-              }}>
+                transition: 'background-color 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}>
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'flex-start',
                   gap: '20px'
                 }}>
-                  {/* Order Content */}
                   <div style={{ flex: 1 }}>
                     <div style={{
                       display: 'flex',
@@ -893,7 +1212,6 @@ const OrdersManagementTab = () => {
                       </span>
                     </div>
                     
-                    {/* Customer Info */}
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -922,7 +1240,6 @@ const OrdersManagementTab = () => {
                       )}
                     </div>
                     
-                    {/* Order Summary */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
@@ -972,7 +1289,6 @@ const OrdersManagementTab = () => {
                     </div>
                   </div>
                   
-                  {/* Actions */}
                   <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -996,8 +1312,7 @@ const OrdersManagementTab = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s ease'
+                        gap: '6px'
                       }}
                     >
                       <FaEye size={12} />
@@ -1020,8 +1335,7 @@ const OrdersManagementTab = () => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s ease'
+                            gap: '6px'
                           }}
                         >
                           <FaCheckCircle size={12} />
@@ -1042,8 +1356,7 @@ const OrdersManagementTab = () => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s ease'
+                            gap: '6px'
                           }}
                         >
                           <FaTimesCircle size={12} />
@@ -1067,8 +1380,7 @@ const OrdersManagementTab = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '6px',
-                          transition: 'all 0.2s ease'
+                          gap: '6px'
                         }}
                       >
                         <FaCheckCircle size={12} />
@@ -1090,8 +1402,7 @@ const OrdersManagementTab = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s ease'
+                        gap: '6px'
                       }}
                     >
                       <FaTrash size={12} />
@@ -1105,7 +1416,6 @@ const OrdersManagementTab = () => {
         )}
       </div>
 
-      {/* Order Details Modal */}
       {showDetails && selectedOrder && renderOrderDetails(selectedOrder)}
     </div>
   );
@@ -1115,9 +1425,7 @@ const OrdersManagementTab = () => {
 // BOOKINGS MANAGEMENT TAB
 // ====================
 
-
 const BookingsManagementTab = () => {
-  // State variables
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -1125,31 +1433,11 @@ const BookingsManagementTab = () => {
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [technicianFilter, setTechnicianFilter] = useState('all');
-  const [calendarView, setCalendarView] = useState('list');
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [availableTechnicians, setAvailableTechnicians] = useState([]);
-  const [fullyBookedDates, setFullyBookedDates] = useState([]);
-  const [services, setServices] = useState([]);
-  const [selectedBookings, setSelectedBookings] = useState([]);
-  const [showBulkActions, setShowBulkActions] = useState(false);
-  const [dateRange, setDateRange] = useState({ start: null, end: null });
-  const [paymentFilter, setPaymentFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState('desc');
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [isExporting, setIsExporting] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  
-  // Chatbox state
   const [showChatbox, setShowChatbox] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
-  
-  // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState(null);
   const [cancellationReason, setCancellationReason] = useState('');
@@ -1161,18 +1449,12 @@ const BookingsManagementTab = () => {
     { id: 'technician_unavailable', label: 'Technician Unavailable', description: 'No available technician for the date/time' },
     { id: 'weather_conditions', label: 'Weather Conditions', description: 'Unfavorable weather conditions' },
     { id: 'customer_no_show', label: 'Customer No-Show', description: 'Customer was not available at scheduled time' },
-    { id: 'service_not_possible', label: 'Service Not Possible', description: 'Service cannot be performed as requested' },
-    { id: 'equipment_failure', label: 'Equipment Failure', description: 'Required equipment is not functioning' },
-    { id: 'location_inaccessible', label: 'Location Inaccessible', description: 'Cannot access the service location' },
-    { id: 'customer_non_responsive', label: 'Customer Non-Responsive', description: 'Customer is not responding to communication' },
     { id: 'other', label: 'Other', description: 'Other reason (specify below)' }
   ];
 
-  // Fetch all data on component mount
   useEffect(() => {
-    fetchAllData();
+    fetchBookings();
     
-    // Real-time updates subscription
     const channel = supabase
       .channel('bookings-changes')
       .on(
@@ -1182,8 +1464,7 @@ const BookingsManagementTab = () => {
           schema: 'public',
           table: 'bookings'
         },
-        (payload) => {
-          console.log('Booking change detected:', payload);
+        () => {
           fetchBookings();
         }
       )
@@ -1192,231 +1473,66 @@ const BookingsManagementTab = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [filter, search]);
 
-  // Fetch when filters change
-  useEffect(() => {
-    fetchBookings();
-  }, [filter, categoryFilter, technicianFilter, paymentFilter, sortBy, sortOrder, dateRange]);
-
-  // Debounced search effect
-  useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-    
-    const timeout = setTimeout(() => {
-      fetchBookings();
-    }, 500);
-    
-    setSearchTimeout(timeout);
-    
-    return () => {
-      if (searchTimeout) clearTimeout(searchTimeout);
-    };
-  }, [search]);
-
-  // Fetch all data
-  const fetchAllData = useCallback(async () => {
-    setLoading(true);
+  const fetchBookings = async () => {
     try {
-      await Promise.all([
-        fetchBookings(),
-        fetchServices(),
-        fetchTechnicians(),
-        calculateFullyBookedDates()
-      ]);
+      setLoading(true);
+      
+      let query = supabase
+        .from('bookings')
+        .select(`
+          *,
+          services:service_id (
+            name,
+            category,
+            price,
+            service_type
+          ),
+          technicians:technician_id (
+            name,
+            email,
+            phone,
+            specialization
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (filter !== 'all') {
+        query = query.eq('status', filter);
+      }
+
+      if (search) {
+        query = query.or(`
+          customer_name.ilike.%${search}%,
+          customer_email.ilike.%${search}%,
+          customer_phone.ilike.%${search}%,
+          address.ilike.%${search}%,
+          services.name.ilike.%${search}%
+        `);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching bookings:', error);
+        const { data: simpleData } = await supabase
+          .from('bookings')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setBookings(simpleData || []);
+      } else {
+        setBookings(data || []);
+      }
+
     } catch (error) {
-      console.error('Error fetching all data:', error);
+      console.error('Error fetching bookings:', error);
+      alert('Error loading bookings: ' + error.message);
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  // Fetch services from database
-  const fetchServices = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .order('name');
-      
-      if (error) {
-        console.error('Error fetching services:', error);
-        throw error;
-      }
-      
-      setServices(data || []);
-      console.log('Services fetched:', data?.length || 0);
-    } catch (error) {
-      console.error('Error fetching services:', error);
-      alert('Error loading services: ' + error.message);
-    }
   };
 
-  // Fetch technicians from database
-  const fetchTechnicians = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('technicians')
-        .select('*')
-        .eq('status', 'active');
-      
-      if (error) {
-        console.error('Error fetching technicians:', error);
-        throw error;
-      }
-      
-      setAvailableTechnicians(data || []);
-      console.log('Technicians fetched:', data?.length || 0);
-    } catch (error) {
-      console.error('Error fetching technicians:', error);
-      alert('Error loading technicians: ' + error.message);
-    }
-  };
-
-// Fetch bookings with new schema
-const fetchBookings = async () => {
-  try {
-    setLoading(true);
-    
-    let query = supabase
-      .from('bookings')
-      .select(`
-        *,
-        services:service_id (
-          name,
-          category,
-          price,
-          service_type
-        ),
-        technicians:technician_id (
-          name,
-          email,
-          phone,
-          specialization
-        )
-      `)
-      .order(sortBy, { ascending: sortOrder === 'asc' });
-
-    // Apply filters
-    if (filter !== 'all') {
-      query = query.eq('status', filter);
-    }
-    
-    if (paymentFilter !== 'all') {
-      query = query.eq('payment_status', paymentFilter);
-    }
-    
-    if (dateRange.start && dateRange.end) {
-      query = query.gte('booking_date', dateRange.start).lte('booking_date', dateRange.end);
-    }
-
-    if (search) {
-      query = query.or(`
-        customer_name.ilike.%${search}%,
-        customer_email.ilike.%${search}%,
-        customer_phone.ilike.%${search}%,
-        address.ilike.%${search}%,
-        services.name.ilike.%${search}%
-      `);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching bookings:', error);
-      // Try without joins
-      const { data: simpleData } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
-      setBookings(simpleData || []);
-    } else {
-      setBookings(data || []);
-    }
-
-  } catch (error) {
-    console.error('Error fetching bookings:', error);
-    alert('Error loading bookings: ' + error.message);
-    setBookings([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-// Update references in the component to use new field names:
-// Instead of booking.name -> booking.customer_name
-// Instead of booking.email -> booking.customer_email
-// Instead of booking.contact -> booking.customer_phone
-// Instead of booking.date -> booking.booking_date
-// Instead of booking.location -> booking.address
-
-  // Calculate fully booked dates
-  const calculateFullyBookedDates = async () => {
-    try {
-      // First, get all services with their capacities
-      const { data: servicesData, error: servicesError } = await supabase
-        .from('services')
-        .select('id, max_daily_capacity');
-      
-      if (servicesError) throw servicesError;
-
-      const serviceCapacities = {};
-      servicesData?.forEach(s => {
-        serviceCapacities[s.id] = s.max_daily_capacity || 5; // Default to 5 if not set
-      });
-
-      // Get bookings for the next 90 days
-      const startDate = new Date().toISOString().split('T')[0];
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 90);
-      const endDateStr = endDate.toISOString().split('T')[0];
-      
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('id, service_id, date, status')
-        .gte('date', startDate)
-        .lte('date', endDateStr)
-        .neq('status', 'cancelled')
-        .neq('status', 'deleted');
-      
-      if (bookingsError) throw bookingsError;
-      
-      // Count bookings per service per date
-      const capacityMap = {};
-      bookingsData?.forEach(booking => {
-        if (!capacityMap[booking.date]) {
-          capacityMap[booking.date] = {};
-        }
-        if (!capacityMap[booking.date][booking.service_id]) {
-          capacityMap[booking.date][booking.service_id] = 0;
-        }
-        capacityMap[booking.date][booking.service_id]++;
-      });
-      
-      // Find fully booked dates
-      const fullyBooked = [];
-      Object.keys(capacityMap).forEach(date => {
-        Object.keys(capacityMap[date]).forEach(serviceId => {
-          const capacity = serviceCapacities[serviceId] || 5;
-          if (capacityMap[date][serviceId] >= capacity) {
-            if (!fullyBooked.includes(date)) {
-              fullyBooked.push(date);
-            }
-          }
-        });
-      });
-      
-      setFullyBookedDates(fullyBooked);
-      console.log('Fully booked dates calculated:', fullyBooked.length);
-      
-    } catch (error) {
-      console.error('Error calculating fully booked dates:', error);
-    }
-  };
-
-  // Fetch chat messages
   const fetchChatMessages = async (bookingId) => {
     try {
       setChatLoading(true);
@@ -1436,7 +1552,6 @@ const fetchBookings = async () => {
     }
   };
 
-  // Send a new message
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedBooking) return;
 
@@ -1461,9 +1576,6 @@ const fetchBookings = async () => {
 
       setChatMessages(prev => [...prev, ...(data || [])]);
       setNewMessage('');
-
-      await sendMessageNotification(selectedBooking, newMessage.trim());
-
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message: ' + error.message);
@@ -1472,50 +1584,71 @@ const fetchBookings = async () => {
     }
   };
 
-  // Send email notification
-  const sendMessageNotification = async (booking, message) => {
-    try {
-      const { error } = await supabase
-        .from('email_notifications')
-        .insert([{
-          to_email: booking.email,
-          subject: `New Message Regarding Your Booking #${booking.id}`,
-          body: `
-            <h3>New Message from Pool Service Admin</h3>
-            <p><strong>Regarding:</strong> ${booking.service || booking.services?.name || 'Your Service'}</p>
-            <p><strong>Date:</strong> ${formatDate(booking.date)}</p>
-            <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
-              <strong>Message:</strong><br/>
-              ${message}
-            </div>
-            <p>Please log in to your account to view and reply to this message.</p>
-            <p>Thank you,<br/>Pool Service Team</p>
-          `,
-          booking_id: booking.id,
-          notification_type: 'booking_message'
-        }]);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error sending notification:', error);
-    }
-  };
-
-  // Open chatbox
   const openChatbox = async (booking) => {
     setSelectedBooking(booking);
     await fetchChatMessages(booking.id);
     setShowChatbox(true);
   };
 
-  // Close chatbox
   const closeChatbox = () => {
     setShowChatbox(false);
     setChatMessages([]);
     setNewMessage('');
   };
 
-  // Helper functions
+  const updateBookingStatus = async (bookingId, newStatus, reason = '') => {
+    try {
+      const updates = { 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      if (newStatus === 'cancelled' && reason) {
+        updates.cancellation_reason = reason;
+      }
+
+      const { error } = await supabase
+        .from('bookings')
+        .update(updates)
+        .eq('id', bookingId);
+
+      if (error) throw error;
+      
+      setBookings(prev => prev.map(booking => 
+        booking.id === bookingId ? { ...booking, ...updates } : booking
+      ));
+      
+      if (selectedBooking?.id === bookingId) {
+        setSelectedBooking(prev => ({ ...prev, ...updates }));
+      }
+      
+      alert(`Booking status updated to ${newStatus.replace('_', ' ')}`);
+      
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      alert('Error updating status: ' + error.message);
+    }
+  };
+
+  const deleteBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to delete this booking?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      setBookings(prev => prev.filter(booking => booking.id !== bookingId));
+      alert('Booking deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      alert('Error deleting booking: ' + error.message);
+    }
+  };
+
   const getBookingStatusColor = (status) => {
     const colors = {
       'requested': { bg: '#dbeafe', text: '#1d4ed8', label: 'Requested' },
@@ -1529,27 +1662,10 @@ const fetchBookings = async () => {
     return colors[status] || { bg: '#f3f4f6', text: '#6b7280', label: status };
   };
 
-  const getServiceIcon = (category) => {
-    switch(category?.toLowerCase()) {
-      case 'pool care': return <FaTools />;
-      case 'pool repair': return <FaWrench />;
-      case 'pool design': return <FaPaintRoller />;
-      case 'water treatment': return <FaTint />;
-      case 'landscaping': return <FaLeaf />;
-      default: return <FaTools />;
-    }
-  };
-
-  const formatCurrency = (amount) => {
-    if (!amount) return '₱0';
-    return `₱${parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
       return new Date(dateString).toLocaleDateString('en-PH', {
-        weekday: 'short',
         month: 'short',
         day: 'numeric',
         year: 'numeric'
@@ -1574,196 +1690,9 @@ const fetchBookings = async () => {
     }
   };
 
-  // Update booking status
-  const updateBookingStatus = async (bookingId, newStatus, reason = '') => {
-    try {
-      const updates = { 
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      };
-
-      if (newStatus === 'cancelled' && reason) {
-        updates.cancellation_reason = reason;
-      }
-
-      const { error } = await supabase
-        .from('bookings')
-        .update(updates)
-        .eq('id', bookingId);
-
-      if (error) throw error;
-      
-      // Update local state
-      setBookings(prev => prev.map(booking => 
-        booking.id === bookingId ? { ...booking, ...updates } : booking
-      ));
-      
-      if (selectedBooking?.id === bookingId) {
-        setSelectedBooking(prev => ({ ...prev, ...updates }));
-      }
-      
-      alert(`Booking status updated to ${newStatus.replace('_', ' ')}`);
-      
-      // Recalculate fully booked dates
-      await calculateFullyBookedDates();
-      
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-      alert('Error updating status: ' + error.message);
-    }
-  };
-
-  // Delete booking
-  const deleteBooking = async (bookingId, reason = '') => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          status: 'deleted',
-          deletion_reason: reason,
-          deleted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
-      // Update local state
-      setBookings(prev => prev.filter(booking => booking.id !== bookingId));
-      
-      setShowDetails(false);
-      setSelectedBooking(null);
-      
-      alert('Booking deleted successfully!');
-      
-      // Recalculate fully booked dates
-      await calculateFullyBookedDates();
-      
-    } catch (error) {
-      console.error('Error deleting booking:', error);
-      alert('Error deleting booking: ' + error.message);
-    }
-  };
-
-  // Quick delete
-  const quickDeleteBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
-      return;
-    }
-
-    const reason = prompt('Please provide a reason for deletion (optional):');
-    
-    try {
-      await deleteBooking(bookingId, reason);
-    } catch (error) {
-      console.error('Error in quick delete:', error);
-    }
-  };
-
-  // Get next status options
-  const getNextStatusOptions = (currentStatus) => {
-    const statusFlow = {
-      'requested': ['awaiting_store_visit', 'scheduled', 'cancelled'],
-      'awaiting_store_visit': ['scheduled', 'cancelled'],
-      'scheduled': ['in_progress', 'cancelled'],
-      'in_progress': ['completed', 'cancelled'],
-      'completed': [],
-      'cancelled': [],
-      'deleted': []
-    };
-    return statusFlow[currentStatus] || [];
-  };
-
-  // Export bookings to CSV
-  const exportBookingsToCSV = async () => {
-    try {
-      setIsExporting(true);
-      const headers = [
-        'ID', 'Customer Name', 'Email', 'Phone', 'Service', 
-        'Status', 'Booking Date', 'Location', 'Technician',
-        'Estimated Cost', 'Payment Status', 'Created Date'
-      ];
-      
-      const rows = bookings.map(booking => [
-        booking.id,
-        booking.name,
-        booking.email,
-        booking.contact,
-        booking.services?.name || booking.service || 'N/A',
-        booking.status,
-        booking.date,
-        booking.location,
-        booking.technicians?.name || 'Not assigned',
-        booking.estimated_cost,
-        booking.payment_status,
-        booking.created_at
-      ]);
-      
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-      ].join('\n');
-      
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `bookings_export_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      alert(`Exported ${bookings.length} bookings successfully!`);
-    } catch (error) {
-      console.error('Error exporting bookings:', error);
-      alert('Error exporting bookings: ' + error.message);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  // Bulk actions
-  const handleBulkStatusUpdate = async (status) => {
-    if (selectedBookings.length === 0) return;
-    
-    if (!window.confirm(`Update ${selectedBookings.length} bookings to "${status.replace('_', ' ')}"?`)) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
-        .in('id', selectedBookings);
-
-      if (error) throw error;
-      
-      // Update local state
-      setBookings(prev => prev.map(booking => 
-        selectedBookings.includes(booking.id) ? { ...booking, status } : booking
-      ));
-      
-      setSelectedBookings([]);
-      setShowBulkActions(false);
-      alert(`Updated ${selectedBookings.length} bookings to ${status.replace('_', ' ')}`);
-      
-      // Recalculate fully booked dates
-      await calculateFullyBookedDates();
-      
-    } catch (error) {
-      console.error('Error updating bulk status:', error);
-      alert('Error updating bookings: ' + error.message);
-    }
-  };
-
-  // Calculate stats
   const stats = useMemo(() => {
     const total = bookings.length;
     const requested = bookings.filter(b => b.status === 'requested').length;
-    const awaiting = bookings.filter(b => b.status === 'awaiting_store_visit').length;
     const scheduled = bookings.filter(b => b.status === 'scheduled').length;
     const inProgress = bookings.filter(b => b.status === 'in_progress').length;
     const completed = bookings.filter(b => b.status === 'completed').length;
@@ -1773,239 +1702,14 @@ const fetchBookings = async () => {
       .reduce((sum, b) => sum + (parseFloat(b.final_cost) || parseFloat(b.estimated_cost) || 0), 0);
     const upcoming = bookings.filter(b => 
       (b.status === 'scheduled' || b.status === 'in_progress') && 
-      b.date && new Date(b.date) >= new Date()
-    ).length;
-    const pendingPayment = bookings.filter(b => 
-      b.payment_status === 'pending' || b.payment_status === 'unpaid'
+      b.booking_date && new Date(b.booking_date) >= new Date()
     ).length;
 
-    return {
-      total, requested, awaiting, scheduled, inProgress,
-      completed, cancelled, revenue, upcoming, pendingPayment
-    };
+    return { total, requested, scheduled, inProgress, completed, cancelled, revenue, upcoming };
   }, [bookings]);
 
-  // Cancel Booking Modal
-  const renderCancelModal = () => {
-    if (!showCancelModal || !cancellingBooking) return null;
-
-    const handleCancel = () => {
-      if (selectedReason === 'other' && !cancellationReason.trim()) {
-        alert('Please provide a cancellation reason');
-        return;
-      }
-
-      const reason = selectedReason === 'other' 
-        ? cancellationReason 
-        : cancellationReasons.find(r => r.id === selectedReason)?.description || 'No reason provided';
-
-      // Handle bulk cancellation
-      if (cancellingBooking.id === 'bulk') {
-        if (!window.confirm(`Cancel ${selectedBookings.length} bookings? This action cannot be undone.`)) {
-          return;
-        }
-        
-        selectedBookings.forEach(id => updateBookingStatus(id, 'cancelled', reason));
-        setSelectedBookings([]);
-        setShowBulkActions(false);
-      } else {
-        // Handle single booking cancellation
-        updateBookingStatus(cancellingBooking.id, 'cancelled', reason);
-      }
-      
-      setShowCancelModal(false);
-      setSelectedReason('');
-      setCancellationReason('');
-      setCancellingBooking(null);
-      setShowDetails(false);
-    };
-
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1002,
-        padding: '20px'
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '30px',
-          maxWidth: '500px',
-          width: '100%',
-          maxHeight: '90vh',
-          overflowY: 'auto'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '24px'
-          }}>
-            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
-              {cancellingBooking.id === 'bulk' 
-                ? `Cancel ${selectedBookings.length} Bookings` 
-                : `Cancel Booking #${cancellingBooking.id}`}
-            </h3>
-            <button
-              onClick={() => {
-                setShowCancelModal(false);
-                setSelectedReason('');
-                setCancellationReason('');
-                setCancellingBooking(null);
-              }}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              <FaTimes />
-            </button>
-          </div>
-
-          <div style={{ marginBottom: '24px' }}>
-            <p style={{ color: '#6b7280', marginBottom: '16px' }}>
-              {cancellingBooking.id === 'bulk' ? (
-                <>
-                  <strong>{selectedBookings.length} bookings selected</strong><br/>
-                  You are about to cancel multiple bookings. Please provide a reason.
-                </>
-              ) : (
-                <>
-                  <strong>Booking #{cancellingBooking.id}</strong><br/>
-                  Customer: {cancellingBooking.name}<br/>
-                  Service: {cancellingBooking.services?.name || cancellingBooking.service || 'Service'}<br/>
-                  Date: {formatDate(cancellingBooking.date)}
-                </>
-              )}
-            </p>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', color: '#374151' }}>
-                Select Cancellation Reason:
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                {cancellationReasons.map(reason => (
-                  <label
-                    key={reason.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: `2px solid ${selectedReason === reason.id ? '#3b82f6' : '#e5e7eb'}`,
-                      backgroundColor: selectedReason === reason.id ? '#eff6ff' : 'white',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="cancellationReason"
-                      value={reason.id}
-                      checked={selectedReason === reason.id}
-                      onChange={(e) => setSelectedReason(e.target.value)}
-                      style={{ marginRight: '12px', marginTop: '2px' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
-                        {reason.label}
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                        {reason.description}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {selectedReason === 'other' && (
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                  Specify Cancellation Reason:
-                </label>
-                <textarea
-                  value={cancellationReason}
-                  onChange={(e) => setCancellationReason(e.target.value)}
-                  placeholder="Please provide detailed reason for cancellation..."
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-          
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <button
-              onClick={() => {
-                setShowCancelModal(false);
-                setSelectedReason('');
-                setCancellationReason('');
-                setCancellingBooking(null);
-              }}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              Cancel
-            </button>
-            
-            <button
-              onClick={handleCancel}
-              disabled={!selectedReason || (selectedReason === 'other' && !cancellationReason.trim())}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: selectedReason ? '#ef4444' : '#d1d5db',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: selectedReason ? 'pointer' : 'not-allowed',
-                opacity: selectedReason ? 1 : 0.6
-              }}
-            >
-              <FaTimesCircle />
-              {cancellingBooking.id === 'bulk' ? 'Confirm Bulk Cancellation' : 'Confirm Cancellation'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Render chatbox component
   const renderChatbox = () => {
     if (!showChatbox || !selectedBooking) return null;
-
-    const customerName = selectedBooking.name || 'Customer';
-    const serviceName = selectedBooking.services?.name || selectedBooking.service || 'Service';
 
     return (
       <div style={{
@@ -2022,7 +1726,6 @@ const fetchBookings = async () => {
         flexDirection: 'column',
         overflow: 'hidden'
       }}>
-        {/* Chat Header */}
         <div style={{
           backgroundColor: '#3b82f6',
           color: 'white',
@@ -2033,10 +1736,10 @@ const fetchBookings = async () => {
         }}>
           <div>
             <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
-              Chat with {customerName}
+              Chat with {selectedBooking.customer_name || 'Customer'}
             </h4>
             <p style={{ margin: '4px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
-              Booking #{selectedBooking.id} • {serviceName}
+              Booking #{selectedBooking.id}
             </p>
           </div>
           <button
@@ -2054,53 +1757,6 @@ const fetchBookings = async () => {
           </button>
         </div>
 
-        {/* Quick Actions */}
-        <div style={{
-          backgroundColor: '#f3f4f6',
-          padding: '12px 20px',
-          display: 'flex',
-          gap: '10px',
-          borderBottom: '1px solid #e5e7eb'
-        }}>
-          <button
-            onClick={() => window.open(`tel:${selectedBooking.contact}`)}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '12px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <FaPhoneAlt size={12} />
-            Call
-          </button>
-          <button
-            onClick={() => window.open(`mailto:${selectedBooking.email}`)}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: '#ec4899',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '12px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <FaEnvelopeOpen size={12} />
-            Email
-          </button>
-        </div>
-
-        {/* Messages Container */}
         <div style={{
           flex: 1,
           padding: '20px',
@@ -2168,7 +1824,6 @@ const fetchBookings = async () => {
           )}
         </div>
 
-        {/* Message Input */}
         <div style={{
           borderTop: '1px solid #e5e7eb',
           padding: '16px 20px',
@@ -2188,8 +1843,7 @@ const fetchBookings = async () => {
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '14px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
+                outline: 'none'
               }}
             />
             <button
@@ -2229,1644 +1883,16 @@ const fetchBookings = async () => {
               )}
             </button>
           </div>
-          <p style={{
-            fontSize: '11px',
-            color: '#6b7280',
-            margin: '8px 0 0 0',
-            textAlign: 'center'
-          }}>
-            Messages are saved and customer will receive email notification
-          </p>
-        </div>
-      </div>
-    );
-  };
-// Add this after the renderChatbox function and before the BulkActions component
-
-// ================= BOOKING DETAILS MODAL =================
-const BookingDetailsModal = () => {
-  if (!showDetails || !selectedBooking) return null;
-
-  const service = selectedBooking.services || {};
-  const technician = selectedBooking.technicians || {};
-  const statusColor = getBookingStatusColor(selectedBooking.status);
-  const isRecurring = service.service_type === 'recurring';
-  
-  // Safely format dates
-  const safeFormatDate = (dateString) => {
-    if (!dateString) return 'Not specified';
-    try {
-      return formatDate(dateString);
-    } catch (e) {
-      return 'Invalid date';
-    }
-  };
-  
-  const safeFormatCurrency = (amount) => {
-    if (!amount) return '₱0';
-    try {
-      return formatCurrency(amount);
-    } catch (e) {
-      return '₱0';
-    }
-  };
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1001,
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        width: '100%',
-        maxWidth: '800px',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        position: 'relative'
-      }}>
-        {/* Header */}
-        <div style={{
-          padding: '24px',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start'
-        }}>
-          <div>
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: '700',
-              color: '#111827',
-              margin: '0 0 4px 0'
-            }}>
-              Booking #{selectedBooking.id}
-            </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <span style={{
-                padding: '6px 12px',
-                borderRadius: '20px',
-                fontSize: '14px',
-                fontWeight: '600',
-                backgroundColor: statusColor.bg,
-                color: statusColor.text
-              }}>
-                {statusColor.label}
-              </span>
-              <span style={{ color: '#6b7280', fontSize: '14px' }}>
-                {safeFormatDate(selectedBooking.created_at)}
-              </span>
-              {isRecurring && (
-                <span style={{
-                  backgroundColor: '#dbeafe',
-                  color: '#1d4ed8',
-                  padding: '4px 8px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
-                  🔄 Recurring Service
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <button
-            onClick={() => {
-              setShowDetails(false);
-              setSelectedBooking(null);
-            }}
-            style={{
-              padding: '8px',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '20px',
-              width: '36px',
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Content */}
-        <div style={{ padding: '24px' }}>
-          {/* Customer Information */}
-          <div style={{ marginBottom: '32px' }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#111827',
-              margin: '0 0 16px 0',
-              paddingBottom: '8px',
-              borderBottom: '2px solid #e5e7eb'
-            }}>
-              Customer Information
-            </h3>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '20px'
-            }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Customer Name
-                </label>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#111827'
-                }}>
-                  {selectedBooking.name || 'Not specified'}
-                </div>
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Email Address
-                </label>
-                <div style={{ fontSize: '16px', color: '#111827' }}>
-                  {selectedBooking.email || 'Not specified'}
-                </div>
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Phone Number
-                </label>
-                <div style={{ fontSize: '16px', color: '#111827' }}>
-                  {selectedBooking.contact || 'Not specified'}
-                </div>
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Address/Location
-                </label>
-                <div style={{ fontSize: '16px', color: '#111827' }}>
-                  📍 {selectedBooking.location || 'Not specified'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Service Details */}
-          <div style={{ marginBottom: '32px' }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#111827',
-              margin: '0 0 16px 0',
-              paddingBottom: '8px',
-              borderBottom: '2px solid #e5e7eb'
-            }}>
-              Service Details
-            </h3>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '20px'
-            }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Service Type
-                </label>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#111827'
-                }}>
-                  {service.name || selectedBooking.service || 'Not specified'}
-                </div>
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Category
-                </label>
-                <div style={{ fontSize: '16px', color: '#111827' }}>
-                  {service.category || 'Not specified'}
-                </div>
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  {isRecurring ? 'Start Date' : 'Service Date'}
-                </label>
-                <div style={{ fontSize: '16px', color: '#111827' }}>
-                  📅 {safeFormatDate(selectedBooking.date)}
-                </div>
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Service Type
-                </label>
-                <div style={{
-                  fontSize: '16px',
-                  color: '#111827',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  {service.service_type === 'one_time' ? '🔹 One Time' : 
-                   service.service_type === 'recurring' ? '🔄 Recurring' : 
-                   service.service_type === 'project' ? '🏗️ Project' : 
-                   'Not specified'}
-                </div>
-              </div>
-            </div>
-            
-            {/* Price Information */}
-            <div style={{
-              backgroundColor: '#f9fafb',
-              borderRadius: '8px',
-              padding: '16px',
-              marginTop: '16px'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '8px'
-              }}>
-                <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                  Estimated Cost
-                </span>
-                <span style={{ fontSize: '18px', fontWeight: '700', color: '#111827' }}>
-                  {safeFormatCurrency(selectedBooking.estimated_cost)}
-                </span>
-              </div>
-              
-              {selectedBooking.final_cost && selectedBooking.final_cost !== selectedBooking.estimated_cost && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                    Final Cost
-                  </span>
-                  <span style={{ fontSize: '18px', fontWeight: '700', color: '#10b981' }}>
-                    {safeFormatCurrency(selectedBooking.final_cost)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Technician & Assignment */}
-          <div style={{ marginBottom: '32px' }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#111827',
-              margin: '0 0 16px 0',
-              paddingBottom: '8px',
-              borderBottom: '2px solid #e5e7eb'
-            }}>
-              Technician Assignment
-            </h3>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '20px'
-            }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Assigned Technician
-                </label>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#111827'
-                }}>
-                  {technician.name || 'Not assigned'}
-                </div>
-                {technician.phone && (
-                  <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
-                    📞 {technician.phone}
-                  </div>
-                )}
-                {technician.specialization && (
-                  <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '2px' }}>
-                    ⚙️ {technician.specialization}
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Payment Status
-                </label>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: selectedBooking.payment_status === 'paid' ? '#10b981' :
-                         selectedBooking.payment_status === 'pending' ? '#f59e0b' :
-                         selectedBooking.payment_status === 'unpaid' ? '#ef4444' : '#6b7280'
-                }}>
-                  {selectedBooking.payment_status?.toUpperCase() || 'PENDING'}
-                </div>
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  marginBottom: '4px'
-                }}>
-                  Priority
-                </label>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: selectedBooking.service_priority === 1 ? '#ef4444' : 
-                         selectedBooking.service_priority === 2 ? '#f59e0b' : '#10b981'
-                }}>
-                  {selectedBooking.service_priority === 1 ? '🔴 High Priority' :
-                   selectedBooking.service_priority === 2 ? '🟡 Medium Priority' :
-                   '🟢 Normal Priority'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Customer Message */}
-          {selectedBooking.message && (
-            <div style={{ marginBottom: '32px' }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#111827',
-                margin: '0 0 16px 0',
-                paddingBottom: '8px',
-                borderBottom: '2px solid #e5e7eb'
-              }}>
-                Customer Message
-              </h3>
-              <div style={{
-                backgroundColor: '#eff6ff',
-                padding: '16px',
-                borderRadius: '8px',
-                borderLeft: '4px solid #3b82f6'
-              }}>
-                <p style={{
-                  fontSize: '15px',
-                  color: '#1e40af',
-                  margin: 0,
-                  lineHeight: '1.6',
-                  fontStyle: 'italic'
-                }}>
-                  "{selectedBooking.message}"
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Admin Notes */}
-          {selectedBooking.notes && (
-            <div style={{ marginBottom: '32px' }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#111827',
-                margin: '0 0 16px 0',
-                paddingBottom: '8px',
-                borderBottom: '2px solid #e5e7eb'
-              }}>
-                Admin Notes
-              </h3>
-              <div style={{
-                backgroundColor: '#f0fdf4',
-                padding: '16px',
-                borderRadius: '8px',
-                borderLeft: '4px solid #10b981'
-              }}>
-                <p style={{
-                  fontSize: '15px',
-                  color: '#065f46',
-                  margin: 0,
-                  lineHeight: '1.6'
-                }}>
-                  {selectedBooking.notes}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Cancellation Details */}
-          {selectedBooking.status === 'cancelled' && selectedBooking.cancellation_reason && (
-            <div style={{ marginBottom: '32px' }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#ef4444',
-                margin: '0 0 16px 0',
-                paddingBottom: '8px',
-                borderBottom: '2px solid #fecaca'
-              }}>
-                Cancellation Details
-              </h3>
-              <div style={{
-                backgroundColor: '#fef2f2',
-                padding: '16px',
-                borderRadius: '8px',
-                borderLeft: '4px solid #ef4444'
-              }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    color: '#991b1b',
-                    marginBottom: '4px',
-                    fontWeight: '600'
-                  }}>
-                    Reason for Cancellation:
-                  </label>
-                  <div style={{ fontSize: '15px', color: '#111827' }}>
-                    {selectedBooking.cancellation_reason}
-                  </div>
-                </div>
-                {selectedBooking.cancelled_at && (
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '14px',
-                      color: '#991b1b',
-                      marginBottom: '4px',
-                      fontWeight: '600'
-                    }}>
-                      Cancelled On:
-                    </label>
-                    <div style={{ fontSize: '15px', color: '#111827' }}>
-                      {safeFormatDate(selectedBooking.cancelled_at)}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            justifyContent: 'flex-end',
-            borderTop: '1px solid #e5e7eb',
-            paddingTop: '24px',
-            flexWrap: 'wrap'
-          }}>
-            <button
-              onClick={() => {
-                setShowDetails(false);
-                openChatbox(selectedBooking);
-              }}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <FaComments />
-              Message Customer
-            </button>
-            
-            <button
-              onClick={() => window.open(`tel:${selectedBooking.contact}`)}
-              disabled={!selectedBooking.contact}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: selectedBooking.contact ? '#10b981' : '#d1d5db',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: selectedBooking.contact ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <FaPhoneAlt />
-              Call Customer
-            </button>
-            
-            <button
-              onClick={() => window.open(`mailto:${selectedBooking.email}`)}
-              disabled={!selectedBooking.email}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: selectedBooking.email ? '#ec4899' : '#d1d5db',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: selectedBooking.email ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <FaEnvelopeOpen />
-              Email Customer
-            </button>
-
-            {/* Status Update Buttons */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {getNextStatusOptions(selectedBooking.status).map(nextStatus => (
-                nextStatus === 'cancelled' ? (
-                  <button
-                    key={nextStatus}
-                    onClick={() => {
-                      setShowDetails(false);
-                      setCancellingBooking(selectedBooking);
-                      setShowCancelModal(true);
-                    }}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: '#fef2f2',
-                      color: '#dc2626',
-                      border: '1px solid #fecaca',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <FaTimesCircle />
-                    Cancel Booking
-                  </button>
-                ) : (
-                  <button
-                    key={nextStatus}
-                    onClick={() => {
-                      updateBookingStatus(selectedBooking.id, nextStatus);
-                      setShowDetails(false);
-                    }}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: nextStatus === 'completed' ? '#10b981' :
-                                     nextStatus === 'in_progress' ? '#3b82f6' : '#f3f4f6',
-                      color: nextStatus === 'completed' ? 'white' :
-                            nextStatus === 'in_progress' ? 'white' : '#374151',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    {nextStatus === 'completed' && <FaCheckCircle />}
-                    {nextStatus === 'in_progress' && <FaTools />}
-                    Mark as {nextStatus.replace('_', ' ')}
-                  </button>
-                )
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-  // Chat button component
-  const renderChatButton = (booking) => (
-    <button
-      onClick={() => openChatbox(booking)}
-      style={{
-        padding: '8px 12px',
-        backgroundColor: '#3b82f6',
-        color: 'white',
-        border: 'none',
-        borderRadius: '6px',
-        fontSize: '13px',
-        fontWeight: '600',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '6px',
-        transition: 'all 0.2s ease'
-      }}
-    >
-      <FaComments size={12} />
-      Message
-    </button>
-  );
-
-  // Bulk actions component
-  const BulkActions = () => {
-    if (selectedBookings.length === 0) return null;
-    
-    return (
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        backgroundColor: 'white',
-        padding: '20px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        zIndex: 100,
-        maxWidth: '400px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <FaCheckCircle color="#10b981" size={20} />
-          <span style={{ fontWeight: '600', fontSize: '16px' }}>
-            {selectedBookings.length} booking(s) selected
-          </span>
-          <button 
-            onClick={() => {
-              setSelectedBookings([]);
-              setShowBulkActions(false);
-            }}
-            style={{ 
-              marginLeft: 'auto', 
-              background: 'none', 
-              border: 'none', 
-              cursor: 'pointer',
-              fontSize: '18px',
-              color: '#6b7280'
-            }}
-          >
-            ✕
-          </button>
-        </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button
-            onClick={() => handleBulkStatusUpdate('scheduled')}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#d1fae5',
-              color: '#065f46',
-              border: '1px solid #a7f3d0',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <FaCalendarCheck /> Mark as Scheduled
-          </button>
-          
-          <button
-            onClick={() => handleBulkStatusUpdate('in_progress')}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#e0f2fe',
-              color: '#0369a1',
-              border: '1px solid #bae6fd',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <FaTools /> Mark as In Progress
-          </button>
-          
-          <button
-            onClick={() => handleBulkStatusUpdate('completed')}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <FaCheck /> Mark as Completed
-          </button>
-          
-          <button
-            onClick={() => {
-              setCancellingBooking({ id: 'bulk', name: `${selectedBookings.length} bookings` });
-              setShowCancelModal(true);
-            }}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#fef2f2',
-              color: '#dc2626',
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <FaTimesCircle /> Cancel Selected
-          </button>
         </div>
       </div>
     );
   };
 
-  
+  const renderBookingDetails = () => {
+    if (!showDetails || !selectedBooking) return null;
 
-  // Add CSS for spinner animation
-  const spinnerStyle = `
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  `;
-
-  return (
-    <>
-      <style>{spinnerStyle}</style>
-      <div style={{ padding: '20px' }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div>
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: '700',
-              color: '#111827',
-              margin: '0 0 4px 0'
-            }}>
-              Bookings Management
-            </h2>
-            <p style={{
-              fontSize: '14px',
-              color: '#6b7280',
-              margin: 0
-            }}>
-              Manage customer service bookings and schedules
-            </p>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          
-            
-            <button
-              onClick={fetchAllData}
-              disabled={loading}
-              style={{
-                padding: '10px 16px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                opacity: loading ? 0.7 : 1
-              }}
-            >
-              <FaSync style={loading ? { animation: 'spin 1s linear infinite' } : {}} />
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </button>
-            <button
-              onClick={exportBookingsToCSV}
-              disabled={isExporting}
-              style={{
-                padding: '10px 16px',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                opacity: isExporting ? 0.7 : 1
-              }}
-            >
-              <FaFileCsv />
-              {isExporting ? 'Exporting...' : 'Export CSV'}
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px'
-        }}>
-          <div style={{
-            backgroundColor: '#fce7f3',
-            padding: '20px',
-            borderRadius: '12px',
-            borderLeft: '4px solid #EC4899',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: 'rgba(236, 72, 153, 0.1)',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <FaCalendarCheck size={20} color="#EC4899" />
-              </div>
-              <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>
-                Total Bookings
-              </div>
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
-              {stats.total}
-            </div>
-          </div>
-          
-          <div style={{
-            backgroundColor: '#fffbeb',
-            padding: '20px',
-            borderRadius: '12px',
-            borderLeft: '4px solid #F59E0B',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <FaClock size={20} color="#F59E0B" />
-              </div>
-              <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>
-                Upcoming
-              </div>
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
-              {stats.upcoming}
-            </div>
-          </div>
-          
-          <div style={{
-            backgroundColor: '#eff6ff',
-            padding: '20px',
-            borderRadius: '12px',
-            borderLeft: '4px solid #3B82F6',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <FaTools size={20} color="#3B82F6" />
-              </div>
-              <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>
-                In Progress
-              </div>
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
-              {stats.inProgress}
-            </div>
-          </div>
-          
-          <div style={{
-            backgroundColor: '#d1fae5',
-            padding: '20px',
-            borderRadius: '12px',
-            borderLeft: '4px solid #10B981',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <FaDollarSign size={20} color="#10B981" />
-              </div>
-              <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>
-                Revenue
-              </div>
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
-              {formatCurrency(stats.revenue)}
-            </div>
-          </div>
-        </div>
-
-        
-
-        {/* Bookings List */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          position: 'relative'
-        }}>
-          {loading ? (
-            <div style={{ 
-              padding: '48px 16px', 
-              textAlign: 'center' 
-            }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                border: '4px solid #e5e7eb',
-                borderTop: '4px solid #3b82f6',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 16px auto'
-              }} />
-              <p style={{ color: '#6b7280' }}>Loading bookings from database...</p>
-            </div>
-          ) : bookings.length === 0 ? (
-            <div style={{ 
-              padding: '48px 16px', 
-              textAlign: 'center' 
-            }}>
-              <FaCalendarCheck size={48} color="#d1d5db" />
-              <h3 style={{ 
-                margin: '16px 0 8px 0', 
-                color: '#111827', 
-                fontSize: '18px' 
-              }}>
-                No Bookings Found
-              </h3>
-              <p style={{ 
-                color: '#6b7280', 
-                fontSize: '14px',
-                margin: 0 
-              }}>
-                {search ? 'No bookings match your search criteria' : 'No bookings available in the database'}
-              </p>
-              <button
-                onClick={fetchAllData}
-                style={{
-                  marginTop: '16px',
-                  padding: '8px 16px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}
-              >
-                Try Again
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Bulk selection header */}
-              {selectedBookings.length > 0 && (
-                <div style={{
-                  padding: '16px 20px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <FaCheckCircle />
-                    <span style={{ fontWeight: '600' }}>
-                      {selectedBookings.length} booking(s) selected
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => setShowBulkActions(!showBulkActions)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '600'
-                      }}
-                    >
-                      Bulk Actions
-                    </button>
-                    <button
-                      onClick={() => setSelectedBookings([])}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '600'
-                      }}
-                    >
-                      Clear Selection
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {bookings.map((booking) => {
-                const service = booking.services || {};
-                const statusColor = getBookingStatusColor(booking.status);
-                const hasMessage = !!booking.message;
-                const isRecurring = service.service_type === 'recurring';
-                const isSelected = selectedBookings.includes(booking.id);
-                
-                return (
-                  <div key={booking.id} style={{
-                    padding: '20px',
-                    borderBottom: '1px solid #e5e7eb',
-                    transition: 'background-color 0.2s ease',
-                    backgroundColor: isSelected ? '#eff6ff' : 'white',
-                    ':hover': {
-                      backgroundColor: isSelected ? '#dbeafe' : '#f9fafb'
-                    }
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '20px'
-                    }}>
-                      {/* Selection checkbox */}
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedBookings(prev => [...prev, booking.id]);
-                            setShowBulkActions(true);
-                          } else {
-                            setSelectedBookings(prev => prev.filter(id => id !== booking.id));
-                          }
-                        }}
-                        style={{
-                          width: '18px',
-                          height: '18px',
-                          cursor: 'pointer',
-                          marginTop: '4px'
-                        }}
-                      />
-                      
-                      {/* Booking Content */}
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          marginBottom: '12px',
-                          flexWrap: 'wrap'
-                        }}>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}>
-                            {getServiceIcon(service.category)}
-                            <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
-                              {booking.name || 'Customer'}
-                            </span>
-                          </div>
-                          <span style={{
-                            padding: '4px 8px',
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            backgroundColor: statusColor.bg,
-                            color: statusColor.text
-                          }}>
-                            {statusColor.label}
-                          </span>
-                          {isRecurring && (
-                            <span style={{
-                              backgroundColor: '#dbeafe',
-                              color: '#1d4ed8',
-                              padding: '4px 8px',
-                              borderRadius: '12px',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              <FaCalendarWeek size={10} />
-                              Recurring
-                            </span>
-                          )}
-                          {hasMessage && (
-                            <span style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '12px',
-                              color: '#3b82f6',
-                              backgroundColor: '#eff6ff',
-                              padding: '4px 8px',
-                              borderRadius: '12px'
-                            }}>
-                              <FaComment size={10} />
-                              Has Message
-                            </span>
-                          )}
-                          {booking.service_priority === 1 && (
-                            <span style={{
-                              backgroundColor: '#fee2e2',
-                              color: '#dc2626',
-                              padding: '4px 8px',
-                              borderRadius: '12px',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              <FaExclamationTriangle size={10} />
-                              High Priority
-                            </span>
-                          )}
-                          <span style={{
-                            fontSize: '12px',
-                            color: '#6b7280',
-                            marginLeft: 'auto'
-                          }}>
-                            {formatDate(booking.created_at)}
-                          </span>
-                        </div>
-                        
-                        {/* Service Info */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          marginBottom: '12px'
-                        }}>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}>
-                            <FaTools size={14} color="#6b7280" />
-                            <span style={{ fontSize: '14px', color: '#374151' }}>
-                              {service.name || booking.service || 'Service'}
-                            </span>
-                          </div>
-                          {service.category && (
-                            <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                              ({service.category})
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Contact & Location */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                          gap: '16px',
-                          marginBottom: '12px'
-                        }}>
-                          <div>
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                              Contact
-                            </div>
-                            <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
-                              📱 {booking.contact || 'No phone'}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                              Email
-                            </div>
-                            <div style={{ fontSize: '14px', color: '#374151' }}>
-                              {booking.email || 'No email'}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                              Location
-                            </div>
-                            <div style={{ fontSize: '14px', color: '#374151' }}>
-                              📍 {booking.location || 'Not specified'}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                              {isRecurring ? 'Start Date' : 'Service Date'}
-                            </div>
-                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                              {formatDate(booking.date)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Message Preview */}
-                        {booking.message && (
-                          <div style={{
-                            backgroundColor: '#f9fafb',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            marginBottom: '12px',
-                            borderLeft: '4px solid #3b82f6'
-                          }}>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#6b7280',
-                              fontWeight: '600',
-                              marginBottom: '4px'
-                            }}>
-                              Customer Message:
-                            </div>
-                            <p style={{
-                              fontSize: '13px',
-                              color: '#4b5563',
-                              margin: 0,
-                              lineHeight: '1.4',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden'
-                            }}>
-                              "{booking.message}"
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Actions */}
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        minWidth: '140px'
-                      }}>
-                        {renderChatButton(booking)}
-                        
-                        <button
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setShowDetails(true);
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#f3f4f6',
-                            color: '#374151',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <FaEye size={12} />
-                          View Details
-                        </button>
-                        
-                        {/* Quick status update */}
-                        {getNextStatusOptions(booking.status).map(nextStatus => (
-                          nextStatus === 'cancelled' ? (
-                            <button
-                              key={nextStatus}
-                              onClick={() => {
-                                setCancellingBooking(booking);
-                                setShowCancelModal(true);
-                              }}
-                              style={{
-                                padding: '8px 12px',
-                                backgroundColor: '#fef2f2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              <FaTimesCircle size={12} />
-                              Cancel
-                            </button>
-                          ) : (
-                            <button
-                              key={nextStatus}
-                              onClick={() => updateBookingStatus(booking.id, nextStatus)}
-                              style={{
-                                padding: '8px 12px',
-                                backgroundColor: nextStatus === 'completed' ? '#10b981' :
-                                               nextStatus === 'in_progress' ? '#3b82f6' : '#f3f4f6',
-                                color: nextStatus === 'completed' ? 'white' :
-                                      nextStatus === 'in_progress' ? 'white' : '#374151',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              {nextStatus === 'completed' && <FaCheckCircle size={12} />}
-                              {nextStatus === 'in_progress' && <FaTools size={12} />}
-                              {nextStatus.replace('_', ' ')}
-                            </button>
-                          )
-                        ))}
-                        
-                        {/* Quick Delete Button */}
-                        <button
-                          onClick={() => quickDeleteBooking(booking.id)}
-                          style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#fef2f2',
-                            color: '#dc2626',
-                            border: '1px solid #fecaca',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <FaTrash size={12} />
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>
-      </div>
-      
-            {BookingDetailsModal()}
-      {/* Chatbox */}
-      {renderChatbox()}
-
-      {/* Bulk Actions */}
-      {showBulkActions && <BulkActions />}
-
-      {/* Cancel Modal */}
-      {renderCancelModal()}
-    </>
-  );
-};
-
-// ====================
-// SERVICE REVIEWS TAB COMPONENT
-// ====================
-
-const ServiceReviewsTab = () => {
-  const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [ratingFilter, setRatingFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [selectedReview, setSelectedReview] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
-
-  useEffect(() => {
-    fetchServiceReviews();
-  }, [ratingFilter]);
-
-  const fetchServiceReviews = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch from service_reviews table
-      let query = supabase
-        .from('service_reviews')
-        .select(`
-          *,
-          services (
-            id,
-            name,
-            description,
-            price,
-            duration
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (ratingFilter !== 'all') {
-        query = query.eq('rating', parseInt(ratingFilter));
-      }
-
-      if (search) {
-        query = query.or(`
-          comment.ilike.%${search}%,
-          user_name.ilike.%${search}%,
-          user_email.ilike.%${search}%,
-          services.name.ilike.%${search}%
-        `);
-      }
-
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching service reviews:', error);
-        // Try without joins
-        const { data: simpleData, error: simpleError } = await supabase
-          .from('service_reviews')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (simpleError) throw simpleError;
-        setReviews(simpleData || []);
-      } else {
-        setReviews(data || []);
-      }
-
-    } catch (error) {
-      console.error('Error fetching service reviews:', error);
-      alert('Error loading service reviews: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteServiceReview = async (reviewId) => {
-    if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('service_reviews')
-        .delete()
-        .eq('id', reviewId);
-
-      if (error) throw error;
-      
-      setReviews(prev => prev.filter(review => review.id !== reviewId));
-      alert('Service review deleted successfully!');
-    } catch (error) {
-      console.error('Error deleting service review:', error);
-      alert('Error deleting service review: ' + error.message);
-    }
-  };
-
-  const getServiceReviewStats = () => {
-    const total = reviews.length;
-    const averageRating = total > 0 
-      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / total 
-      : 0;
-    
-    // Rating distribution
-    const ratingDistribution = {
-      5: reviews.filter(r => r.rating === 5).length,
-      4: reviews.filter(r => r.rating === 4).length,
-      3: reviews.filter(r => r.rating === 3).length,
-      2: reviews.filter(r => r.rating === 2).length,
-      1: reviews.filter(r => r.rating === 1).length
-    };
-    
-    // Verified service reviews
-    const verifiedReviews = reviews.filter(r => r.is_verified_service).length;
-    
-    return { total, averageRating, ratingDistribution, verifiedReviews };
-  };
-
-  const stats = getServiceReviewStats();
-
-  const renderServiceReviewDetails = (review) => {
-    const userName = review.user_name || 'Anonymous';
-    const userEmail = review.user_email || 'N/A';
-    const serviceName = review.services?.name || `Service #${review.service_id}`;
-    const isVerified = review.is_verified_service ? '✅ Verified Service' : '';
+    const service = selectedBooking.services || {};
+    const statusColor = getBookingStatusColor(selectedBooking.status);
 
     return (
       <div style={{
@@ -3879,165 +1905,196 @@ const ServiceReviewsTab = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000,
+        zIndex: 1001,
         padding: '20px'
       }}>
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
-          padding: '30px',
-          maxWidth: '600px',
           width: '100%',
+          maxWidth: '800px',
           maxHeight: '90vh',
           overflowY: 'auto'
         }}>
           <div style={{
+            padding: '24px',
+            borderBottom: '1px solid #e5e7eb',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '24px'
+            alignItems: 'flex-start'
           }}>
-            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
-              Service Review Details
-            </h3>
-            <button
-              onClick={() => setShowDetails(false)}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              Close
-            </button>
-          </div>
-
-          {/* Review Header */}
-          <div style={{
-            backgroundColor: '#f9fafb',
-            padding: '20px',
-            borderRadius: '8px',
-            marginBottom: '20px'
-          }}>
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                Service
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>
-                {serviceName}
+            <div>
+              <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: '0 0 4px 0' }}>
+                Booking #{selectedBooking.id}
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <span style={{
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  backgroundColor: statusColor.bg,
+                  color: statusColor.text
+                }}>
+                  {statusColor.label}
+                </span>
               </div>
             </div>
             
-            <div style={{ display: 'grid', gap: '16px' }}>
-              <div>
-                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                  Reviewer
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
-                  {userName}
-                </div>
-                <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                  {userEmail}
-                </div>
-              </div>
-              
-              <div>
-                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                  Rating
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <StarRating rating={review.rating} />
-                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
-                    {review.rating}/5
-                  </span>
-                </div>
-                {isVerified && (
-                  <div style={{ 
-                    fontSize: '12px', 
-                    color: '#10b981',
-                    marginTop: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    {isVerified}
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                  Date & Time
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
-                  {new Date(review.created_at).toLocaleDateString()} at {new Date(review.created_at).toLocaleTimeString()}
-                </div>
-              </div>
-              
-              <div>
-                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                  Helpful Votes
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <FaThumbsUp size={16} />
-                  {review.helpful_count || 0}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Comment */}
-          {review.comment && (
-            <div style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
-                Review Comment
-              </h4>
-              <div style={{
-                backgroundColor: '#f9fafb',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <p style={{ 
-                  fontSize: '14px', 
-                  color: '#4b5563', 
-                  lineHeight: '1.6',
-                  margin: 0,
-                  whiteSpace: 'pre-wrap'
-                }}>
-                  {review.comment}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button
               onClick={() => {
-                deleteServiceReview(review.id);
                 setShowDetails(false);
+                setSelectedBooking(null);
               }}
               style={{
-                padding: '12px 24px',
-                backgroundColor: '#fef2f2',
-                color: '#dc2626',
-                border: '1px solid #fecaca',
+                padding: '8px',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
                 borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
                 cursor: 'pointer',
+                fontSize: '20px',
+                width: '36px',
+                height: '36px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'center'
               }}
             >
-              <FaTrash />
-              Delete Review
+              ✕
             </button>
+          </div>
+
+          <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: '32px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px', paddingBottom: '8px', borderBottom: '2px solid #e5e7eb' }}>
+                Customer Information
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Customer Name</label>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>{selectedBooking.customer_name || 'Not specified'}</div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Email Address</label>
+                  <div style={{ fontSize: '16px', color: '#111827' }}>{selectedBooking.customer_email || 'Not specified'}</div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Phone Number</label>
+                  <div style={{ fontSize: '16px', color: '#111827' }}>{selectedBooking.customer_phone || 'Not specified'}</div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Address/Location</label>
+                  <div style={{ fontSize: '16px', color: '#111827' }}>📍 {selectedBooking.address || 'Not specified'}</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '32px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px', paddingBottom: '8px', borderBottom: '2px solid #e5e7eb' }}>
+                Service Details
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Service Type</label>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>{service.name || selectedBooking.service || 'Not specified'}</div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Service Date</label>
+                  <div style={{ fontSize: '16px', color: '#111827' }}>📅 {formatDate(selectedBooking.booking_date)}</div>
+                </div>
+              </div>
+              
+              <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px', marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Estimated Cost</span>
+                  <span style={{ fontSize: '18px', fontWeight: '700', color: '#111827' }}>₱{parseFloat(selectedBooking.estimated_cost || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {selectedBooking.message && (
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px', paddingBottom: '8px', borderBottom: '2px solid #e5e7eb' }}>
+                  Customer Message
+                </h3>
+                <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #3b82f6' }}>
+                  <p style={{ fontSize: '15px', color: '#1e40af', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>
+                    "{selectedBooking.message}"
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e5e7eb', paddingTop: '24px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  setShowDetails(false);
+                  openChatbox(selectedBooking);
+                }}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <FaComments />
+                Message Customer
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (selectedBooking.status !== 'cancelled') {
+                    updateBookingStatus(selectedBooking.id, 'cancelled');
+                    setShowDetails(false);
+                  }
+                }}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <FaTimesCircle />
+                Cancel Booking
+              </button>
+              
+              <button
+                onClick={() => deleteBooking(selectedBooking.id)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <FaTrash />
+                Delete Booking
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -4046,408 +2103,151 @@ const ServiceReviewsTab = () => {
 
   return (
     <div>
-      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '24px'
+        marginBottom: '24px',
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
         <div>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#111827',
-            margin: '0 0 4px 0'
-          }}>
-            Service Reviews
+          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: '0 0 4px 0' }}>
+            Bookings Management
           </h2>
-          <p style={{
-            fontSize: '14px',
-            color: '#6b7280',
-            margin: 0
-          }}>
-            View and manage service reviews
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+            Manage customer service bookings and schedules
           </p>
         </div>
         
-        <button
-          onClick={fetchServiceReviews}
-          style={{
-            padding: '10px 16px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <FaSync />
-          Refresh
-        </button>
-      </div>
-
-      {/* Review Stats */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
-        <StatCard
-          icon={FaComment}
-          title="Service Reviews"
-          value={stats.total}
-          color="#3b82f6"
-          bgColor="#eff6ff"
-        />
-        <StatCard
-          icon={FaStar}
-          title="Avg. Rating"
-          value={stats.averageRating.toFixed(1)}
-          color="#F59E0B"
-          bgColor="#fffbeb"
-        />
-        <StatCard
-          icon={FaTools}
-          title="Services Reviewed"
-          value={new Set(reviews.map(r => r.service_id)).size}
-          color="#EC4899"
-          bgColor="#fce7f3"
-        />
-        <StatCard
-          icon={FaShieldAlt}
-          title="Verified Reviews"
-          value={stats.verifiedReviews}
-          color="#10B981"
-          bgColor="#d1fae5"
-        />
-      </div>
-
-      {/* Filters */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '20px',
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{
-          display: 'flex',
-          gap: '16px',
-          alignItems: 'flex-end',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ flex: 1, minWidth: '300px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Search Service Reviews
-            </label>
-            <div style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <FaSearch style={{
-                position: 'absolute',
-                left: '12px',
-                color: '#9ca3af'
-              }} />
-              <input
-                type="text"
-                placeholder="Search by service name, reviewer name, email, or comment..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && fetchServiceReviews()}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px 10px 36px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
-              />
-            </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ position: 'relative' }}>
+            <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+            <input
+              type="text"
+              placeholder="Search bookings..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ padding: '10px 12px 10px 36px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', width: '250px' }}
+            />
           </div>
           
-          <div style={{ minWidth: '180px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Rating Filter
-            </label>
-            <select
-              value={ratingFilter}
-              onChange={(e) => setRatingFilter(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: 'white',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="all">All Ratings</option>
-              <option value="5">5 Stars</option>
-              <option value="4">4 Stars</option>
-              <option value="3">3 Stars</option>
-              <option value="2">2 Stars</option>
-              <option value="1">1 Star</option>
-            </select>
-          </div>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white' }}
+          >
+            <option value="all">All Bookings</option>
+            <option value="requested">Requested</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
           
           <button
-            onClick={() => {
-              setSearch('');
-              setRatingFilter('all');
-              fetchServiceReviews();
-            }}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
+            onClick={fetchBookings}
+            style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <FaFilter />
-            Clear Filters
+            <FaSync />
+            Refresh
           </button>
         </div>
       </div>
 
-      {/* Reviews List */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard icon={FaCalendarCheck} title="Total Bookings" value={stats.total} color="#EC4899" bgColor="#fce7f3" />
+        <StatCard icon={FaClock} title="Requested" value={stats.requested} color="#F59E0B" bgColor="#fffbeb" />
+        <StatCard icon={FaTools} title="In Progress" value={stats.inProgress} color="#3B82F6" bgColor="#eff6ff" />
+        <StatCard icon={FaDollarSign} title="Revenue" value={`₱${stats.revenue.toLocaleString()}`} color="#10B981" bgColor="#d1fae5" />
+      </div>
+
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         {loading ? (
-          <div style={{ 
-            padding: '48px 16px', 
-            textAlign: 'center' 
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: '4px solid #e5e7eb',
-              borderTop: '4px solid #3b82f6',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 16px auto'
-            }} />
-            <p style={{ color: '#6b7280' }}>Loading service reviews...</p>
+          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
+            <div style={{ width: '40px', height: '40px', border: '4px solid #e5e7eb', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px auto' }} />
+            <p style={{ color: '#6b7280' }}>Loading bookings...</p>
           </div>
-        ) : reviews.length === 0 ? (
-          <div style={{ 
-            padding: '48px 16px', 
-            textAlign: 'center' 
-          }}>
-            <FaTools size={48} color="#d1d5db" />
-            <h3 style={{ 
-              margin: '16px 0 8px 0', 
-              color: '#111827', 
-              fontSize: '18px' 
-            }}>
-              No Service Reviews Found
-            </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              fontSize: '14px',
-              margin: 0 
-            }}>
-              {search ? 'No service reviews match your search criteria' : 'No service reviews available yet'}
-            </p>
+        ) : bookings.length === 0 ? (
+          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
+            <FaCalendarCheck size={48} color="#d1d5db" />
+            <h3 style={{ margin: '16px 0 8px 0', color: '#111827', fontSize: '18px' }}>No Bookings Found</h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>No bookings available in the database</p>
           </div>
         ) : (
-          reviews.map((review) => {
-            const userName = review.user_name || 'Anonymous';
-            const userEmail = review.user_email || '';
-            const serviceName = review.services?.name || `Service #${review.service_id}`;
-            const isVerified = review.is_verified_service;
+          bookings.map((booking) => {
+            const service = booking.services || {};
+            const statusColor = getBookingStatusColor(booking.status);
             
             return (
-              <div key={review.id} style={{
-                padding: '20px',
-                borderBottom: '1px solid #e5e7eb',
-                transition: 'background-color 0.2s ease',
-                ':hover': {
-                  backgroundColor: '#f9fafb'
-                }
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: '20px'
-                }}>
-                  {/* Review Content */}
+              <div key={booking.id} style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '12px'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FaTools size={16} color="#6b7280" />
-                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
-                          {serviceName}
-                        </span>
+                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>{booking.customer_name || 'Customer'}</span>
                       </div>
-                      {isVerified && (
-                        <span style={{
-                          fontSize: '11px',
-                          backgroundColor: '#d1fae5',
-                          color: '#065f46',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
-                          fontWeight: '600'
-                        }}>
-                          ✓ Verified Service
-                        </span>
-                      )}
-                      <span style={{
-                        fontSize: '12px',
-                        color: '#6b7280',
-                        marginLeft: 'auto'
-                      }}>
-                        {new Date(review.created_at).toLocaleDateString()}
+                      <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', backgroundColor: statusColor.bg, color: statusColor.text }}>
+                        {statusColor.label}
                       </span>
+                      <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>{formatDate(booking.created_at)}</span>
                     </div>
                     
-                    {/* Reviewer & Rating */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '12px'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <FaUserCircle size={14} color="#6b7280" />
-                        <span style={{ fontSize: '14px', color: '#374151' }}>
-                          {userName}
-                        </span>
-                        {userEmail && (
-                          <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                            ({userEmail})
-                          </span>
-                        )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FaTools size={14} color="#6b7280" />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>{service.name || booking.service || 'Service'}</span>
                       </div>
-                      <StarRating rating={review.rating} size={14} />
-                      {review.helpful_count > 0 && (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          marginLeft: '8px'
-                        }}>
-                          <FaThumbsUp size={10} />
-                          {review.helpful_count}
-                        </div>
-                      )}
                     </div>
                     
-                    {/* Comment Preview */}
-                    {review.comment && (
-                      <p style={{
-                        fontSize: '14px',
-                        color: '#4b5563',
-                        lineHeight: '1.5',
-                        margin: '12px 0',
-                        backgroundColor: '#f9fafb',
-                        padding: '12px',
-                        borderRadius: '6px'
-                      }}>
-                        {review.comment.length > 200 ? `${review.comment.substring(0, 200)}...` : review.comment}
-                      </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Contact</div>
+                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>📱 {booking.customer_phone || 'No phone'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Service Date</div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{formatDate(booking.booking_date)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Estimated Cost</div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>₱{parseFloat(booking.estimated_cost || 0).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    
+                    {booking.message && (
+                      <div style={{ backgroundColor: '#f9fafb', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #3b82f6' }}>
+                        <p style={{ fontSize: '13px', color: '#4b5563', margin: 0, lineHeight: '1.4' }}>"{booking.message.substring(0, 100)}..."</p>
+                      </div>
                     )}
                   </div>
                   
-                  {/* Actions */}
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    minWidth: '140px'
-                  }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '140px' }}>
+                    <button
+                      onClick={() => openChatbox(booking)}
+                      style={{ padding: '8px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <FaComments size={12} />
+                      Message
+                    </button>
+                    
                     <button
                       onClick={() => {
-                        setSelectedReview(review);
+                        setSelectedBooking(booking);
                         setShowDetails(true);
                       }}
-                      style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s ease'
-                      }}
+                      style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
                       <FaEye size={12} />
                       View Details
                     </button>
                     
                     <button
-                      onClick={() => deleteServiceReview(review.id)}
-                      style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#fef2f2',
-                        color: '#dc2626',
-                        border: '1px solid #fecaca',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s ease'
-                      }}
+                      onClick={() => deleteBooking(booking.id)}
+                      style={{ padding: '8px 12px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
                       <FaTrash size={12} />
                       Delete
@@ -4459,15 +2259,304 @@ const ServiceReviewsTab = () => {
           })
         )}
       </div>
-
-      {/* Review Details Modal */}
-      {showDetails && selectedReview && renderServiceReviewDetails(selectedReview)}
+      
+      {renderChatbox()}
+      {renderBookingDetails()}
     </div>
   );
 };
 
 // ====================
-// PRODUCT REVIEWS TAB COMPONENT
+// REVIEW CONVERSATION VIEWER COMPONENT
+// ====================
+
+const ReviewConversationViewer = ({ reviewId, adminReply, onReplySent }) => {
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [reviewId]);
+
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('review_conversations')
+        .select('*')
+        .eq('review_id', reviewId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setConversations(data || []);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!replyMessage.trim()) {
+      alert('Please enter a reply message');
+      return;
+    }
+
+    try {
+      setSending(true);
+      
+      const { data, error } = await supabase
+        .from('review_conversations')
+        .insert([{
+          review_id: reviewId,
+          parent_id: null,
+          user_id: null,
+          user_name: 'Admin',
+          message: replyMessage.trim(),
+          is_admin: true,
+          created_at: new Date().toISOString()
+        }])
+        .select();
+
+      if (error) throw error;
+
+      setConversations(prev => [...prev, data[0]]);
+      setReplyMessage('');
+      setShowReplyForm(false);
+      alert('Reply sent successfully!');
+      if (onReplySent) onReplySent();
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      alert('Error sending reply: ' + error.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const totalReplies = (adminReply ? 1 : 0) + conversations.length;
+
+  if (totalReplies === 0) return null;
+
+  return (
+    <div style={{
+      marginTop: '16px',
+      backgroundColor: '#f8f9fa',
+      borderRadius: '8px',
+      overflow: 'hidden'
+    }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          padding: '12px 16px',
+          backgroundColor: '#e9ecef',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          borderBottom: expanded ? '1px solid #dee2e6' : 'none'
+        }}
+      >
+        <FaComments size={14} color="#6c757d" />
+        <span style={{ fontSize: '13px', fontWeight: '500', color: '#495057' }}>
+          {totalReplies} {totalReplies === 1 ? 'reply' : 'replies'}
+        </span>
+        <span style={{ marginLeft: 'auto' }}>
+          {expanded ? <FaArrowUp size={12} /> : <FaArrowDown size={12} />}
+        </span>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: '16px' }}>
+          {/* Loading state */}
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                border: '3px solid #e5e7eb',
+                borderTop: '3px solid #3b82f6',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto'
+              }} />
+            </div>
+          )}
+
+          {/* Admin's original reply */}
+          {!loading && adminReply && (
+            <div style={{
+              backgroundColor: '#e3f2fd',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '12px',
+              borderLeft: '3px solid #2196f3'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '8px'
+              }}>
+                <FaUserCircle size={14} color="#2196f3" />
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#1976d2' }}>Admin</span>
+                <span style={{ fontSize: '10px', color: '#6c757d', marginLeft: 'auto' }}>
+                  {new Date(adminReply.created_at).toLocaleString()}
+                </span>
+              </div>
+              <p style={{ fontSize: '13px', color: '#333', margin: 0, lineHeight: '1.5' }}>
+                {adminReply.reply_text}
+              </p>
+            </div>
+          )}
+
+          {/* User replies and admin replies */}
+          {!loading && conversations.map(conv => (
+            <div key={conv.id} style={{
+              backgroundColor: conv.is_admin ? '#e3f2fd' : '#fff3e0',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '12px',
+              borderLeft: conv.is_admin ? '3px solid #2196f3' : '3px solid #ff9800',
+              marginLeft: conv.parent_id ? '20px' : '0'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '8px'
+              }}>
+                {conv.is_admin ? (
+                  <>
+                    <FaUserCircle size={14} color="#2196f3" />
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#1976d2' }}>Admin</span>
+                  </>
+                ) : (
+                  <>
+                    <FaUserCircle size={14} color="#ff9800" />
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#e65100' }}>
+                      {conv.user_name || 'Customer'}
+                    </span>
+                  </>
+                )}
+                <span style={{ fontSize: '10px', color: '#6c757d', marginLeft: 'auto' }}>
+                  {new Date(conv.created_at).toLocaleString()}
+                </span>
+              </div>
+              <p style={{ fontSize: '13px', color: '#333', margin: 0, lineHeight: '1.5' }}>
+                {conv.message}
+              </p>
+            </div>
+          ))}
+
+          {/* Admin reply form */}
+          {!loading && !showReplyForm ? (
+            <button
+              onClick={() => setShowReplyForm(true)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                color: '#2196f3',
+                border: '1px dashed #2196f3',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '8px',
+                width: '100%',
+                justifyContent: 'center'
+              }}
+            >
+              <FaReply size={12} />
+              Reply to Customer
+            </button>
+          ) : !loading && showReplyForm && (
+            <div style={{ marginTop: '12px' }}>
+              <textarea
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+                placeholder="Write your reply..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setShowReplyForm(false);
+                    setReplyMessage('');
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#f8f9fa',
+                    color: '#6c757d',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendReply}
+                  disabled={!replyMessage.trim() || sending}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: !replyMessage.trim() || sending ? '#ccc' : '#2196f3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    cursor: !replyMessage.trim() || sending ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {sending ? (
+                    <>
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        borderTop: '2px solid white',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <FaPaperPlane size={10} />
+                      Send Reply
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ====================
+// PRODUCT REVIEWS TAB COMPONENT (FIXED)
 // ====================
 
 const ProductReviewsTab = () => {
@@ -4478,28 +2567,22 @@ const ProductReviewsTab = () => {
   const [selectedReview, setSelectedReview] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showReplyModal, setShowReplyModal] = useState(false);
+  const [replies, setReplies] = useState({});
+  const [conversations, setConversations] = useState({});
 
   useEffect(() => {
     fetchProductReviews();
-  }, [ratingFilter, statusFilter]);
+  }, [ratingFilter, statusFilter, search]);
 
+  // FIXED: Proper fetch function that doesn't filter out deleted reviews (since we actually delete them)
   const fetchProductReviews = async () => {
     try {
       setLoading(true);
       
-      // Fetch from 'reviews' table (for products)
       let query = supabase
         .from('reviews')
-        .select(`
-          *,
-          products (
-            id,
-            name,
-            price,
-            image_url,
-            category
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (ratingFilter !== 'all') {
@@ -4514,8 +2597,7 @@ const ProductReviewsTab = () => {
         query = query.or(`
           comment.ilike.%${search}%,
           user_name.ilike.%${search}%,
-          user_email.ilike.%${search}%,
-          products.name.ilike.%${search}%
+          user_email.ilike.%${search}%
         `);
       }
 
@@ -4523,16 +2605,11 @@ const ProductReviewsTab = () => {
       
       if (error) {
         console.error('Error fetching product reviews:', error);
-        // Try without joins
-        const { data: simpleData, error: simpleError } = await supabase
-          .from('reviews')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (simpleError) throw simpleError;
-        setReviews(simpleData || []);
+        setReviews([]);
       } else {
         setReviews(data || []);
+        await fetchAllReplies(data || []);
+        await fetchConversationsForReviews(data || []);
       }
 
     } catch (error) {
@@ -4540,6 +2617,55 @@ const ProductReviewsTab = () => {
       alert('Error loading product reviews: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllReplies = async (reviewsData) => {
+    try {
+      const replyPromises = reviewsData.map(review => 
+        supabase
+          .from('review_replies')
+          .select('*')
+          .eq('review_id', review.id)
+          .maybeSingle()
+      );
+      
+      const results = await Promise.all(replyPromises);
+      const repliesMap = {};
+      results.forEach((result, index) => {
+        if (result.data) {
+          repliesMap[reviewsData[index].id] = result.data;
+        }
+      });
+      setReplies(repliesMap);
+    } catch (error) {
+      console.error('Error fetching replies:', error);
+    }
+  };
+
+  const fetchConversationsForReviews = async (reviewsData) => {
+    if (!reviewsData || reviewsData.length === 0) return;
+    
+    try {
+      const reviewIds = reviewsData.map(review => review.id);
+      const { data, error } = await supabase
+        .from('review_conversations')
+        .select('*')
+        .in('review_id', reviewIds)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const conversationsMap = {};
+      data?.forEach(conv => {
+        if (!conversationsMap[conv.review_id]) {
+          conversationsMap[conv.review_id] = [];
+        }
+        conversationsMap[conv.review_id].push(conv);
+      });
+      setConversations(conversationsMap);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
     }
   };
 
@@ -4559,7 +2685,6 @@ const ProductReviewsTab = () => {
         review.id === reviewId ? { ...review, status } : review
       ));
       
-      // Update selected review if it's the current one
       if (selectedReview?.id === reviewId) {
         setSelectedReview(prev => ({ ...prev, status }));
       }
@@ -4571,10 +2696,37 @@ const ProductReviewsTab = () => {
     }
   };
 
+  // FIXED: Proper delete function that actually removes from database
   const deleteProductReview = async (reviewId) => {
-    if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) return;
+    console.log('🔍 Delete function called for review ID:', reviewId);
+    
+    if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) {
+      console.log('User cancelled');
+      return;
+    }
     
     try {
+      // First, delete any replies associated with this review
+      const { error: repliesError } = await supabase
+        .from('review_replies')
+        .delete()
+        .eq('review_id', reviewId);
+      
+      if (repliesError) {
+        console.error('Error deleting replies:', repliesError);
+      }
+
+      // Delete any conversations associated with this review
+      const { error: conversationsError } = await supabase
+        .from('review_conversations')
+        .delete()
+        .eq('review_id', reviewId);
+      
+      if (conversationsError && conversationsError.code !== '42P01') {
+        console.error('Error deleting conversations:', conversationsError);
+      }
+
+      // Finally, delete the review itself
       const { error } = await supabase
         .from('reviews')
         .delete()
@@ -4582,16 +2734,27 @@ const ProductReviewsTab = () => {
 
       if (error) throw error;
       
+      // Update local state by filtering out the deleted review
       setReviews(prev => prev.filter(review => review.id !== reviewId));
+      
       if (selectedReview?.id === reviewId) {
         setShowDetails(false);
         setSelectedReview(null);
       }
-      alert('Product review deleted successfully!');
+      
+      alert('Product review and all associated data deleted successfully!');
+      
+      // Refresh to ensure consistency
+      await fetchProductReviews();
+      
     } catch (error) {
       console.error('Error deleting product review:', error);
       alert('Error deleting product review: ' + error.message);
     }
+  };
+
+  const handleReplySent = () => {
+    fetchProductReviews();
   };
 
   const getProductReviewStats = () => {
@@ -4604,7 +2767,6 @@ const ProductReviewsTab = () => {
       ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / total 
       : 0;
     
-    // Rating distribution
     const ratingDistribution = {
       5: reviews.filter(r => r.rating === 5).length,
       4: reviews.filter(r => r.rating === 4).length,
@@ -4621,8 +2783,8 @@ const ProductReviewsTab = () => {
   const renderProductReviewDetails = (review) => {
     const userName = review.user_name || 'Anonymous';
     const userEmail = review.user_email || 'N/A';
-    const productName = review.products?.name || `Product #${review.product_id}`;
-    const productPrice = review.products?.price ? `₱${review.products.price.toLocaleString()}` : 'N/A';
+    const productName = `Review #${review.id.substring(0, 8)}`;
+    const hasReply = !!replies[review.id];
 
     return (
       <div style={{
@@ -4654,7 +2816,7 @@ const ProductReviewsTab = () => {
             marginBottom: '24px'
           }}>
             <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
-              Product Review Details
+              Review Details
             </h3>
             <button
               onClick={() => setShowDetails(false)}
@@ -4671,7 +2833,6 @@ const ProductReviewsTab = () => {
             </button>
           </div>
 
-          {/* Review Header */}
           <div style={{
             backgroundColor: '#f9fafb',
             padding: '20px',
@@ -4679,89 +2840,93 @@ const ProductReviewsTab = () => {
             marginBottom: '20px'
           }}>
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                Product
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>
-                {productName}
-              </div>
-              {productPrice !== 'N/A' && (
-                <div style={{ fontSize: '14px', color: '#10b981', marginTop: '2px' }}>
-                  {productPrice}
-                </div>
-              )}
+              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Review ID</div>
+              <div style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>{productName}</div>
             </div>
             
             <div style={{ display: 'grid', gap: '16px' }}>
               <div>
-                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                  Reviewer
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
-                  {userName}
-                </div>
-                <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                  {userEmail}
-                </div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Reviewer</div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>{userName}</div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>{userEmail}</div>
               </div>
               
               <div>
-                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                  Rating
-                </div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Rating</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <StarRating rating={review.rating} />
-                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
-                    {review.rating}/5
-                  </span>
+                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>{review.rating}/5</span>
                 </div>
               </div>
               
               <div>
-                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                  Status
-                </div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Status</div>
                 <ReviewStatusBadge status={review.status} />
-              </div>
-              
-              <div>
-                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-                  Date & Time
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
-                  {new Date(review.created_at).toLocaleDateString()} at {new Date(review.created_at).toLocaleTimeString()}
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Comment */}
           {review.comment && (
             <div style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
-                Review Comment
-              </h4>
-              <div style={{
-                backgroundColor: '#f9fafb',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <p style={{ 
-                  fontSize: '14px', 
-                  color: '#4b5563', 
-                  lineHeight: '1.6',
-                  margin: 0,
-                  whiteSpace: 'pre-wrap'
-                }}>
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>Review Comment</h4>
+              <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <p style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
                   {review.comment}
                 </p>
               </div>
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          {hasReply && (
+            <div style={{ marginBottom: '24px' }}>
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#10b981', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaReply />
+                Admin Reply
+              </h4>
+              <div style={{ backgroundColor: '#f0fdf4', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+                <p style={{ fontSize: '14px', color: '#065f46', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {replies[review.id].reply_text}
+                </p>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                  Replied on: {new Date(replies[review.id].created_at).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <ReviewConversationViewer 
+            reviewId={review.id}
+            adminReply={replies[review.id]}
+            onReplySent={() => {
+              fetchProductReviews();
+            }}
+          />
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                setSelectedReview(review);
+                setShowReplyModal(true);
+                setShowDetails(false);
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaReply />
+              {hasReply ? 'Edit Reply' : 'Reply to Review'}
+            </button>
+            
             {review.status === 'pending' && (
               <>
                 <button
@@ -4813,10 +2978,7 @@ const ProductReviewsTab = () => {
             )}
             
             <button
-              onClick={() => {
-                deleteProductReview(review.id);
-                setShowDetails(false);
-              }}
+              onClick={() => deleteProductReview(review.id)}
               style={{
                 padding: '12px 24px',
                 backgroundColor: '#fef2f2',
@@ -4842,7 +3004,6 @@ const ProductReviewsTab = () => {
 
   return (
     <div>
-      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -4850,198 +3011,42 @@ const ProductReviewsTab = () => {
         marginBottom: '24px'
       }}>
         <div>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#111827',
-            margin: '0 0 4px 0'
-          }}>
-            Product Reviews
-          </h2>
-          <p style={{
-            fontSize: '14px',
-            color: '#6b7280',
-            margin: 0
-          }}>
-            Moderate and manage product reviews
-          </p>
+          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: '0 0 4px 0' }}>Product Reviews</h2>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Moderate and manage product reviews</p>
         </div>
         
-        <button
-          onClick={fetchProductReviews}
-          style={{
-            padding: '10px 16px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <FaSync />
-          Refresh
+        <button onClick={fetchProductReviews} style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FaSync /> Refresh
         </button>
       </div>
 
-      {/* Review Stats */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
-        <StatCard
-          icon={FaStar}
-          title="Total Reviews"
-          value={stats.total}
-          color="#8B5CF6"
-          bgColor="#f5f3ff"
-        />
-        <StatCard
-          icon={FaClock}
-          title="Pending"
-          value={stats.pending}
-          color="#F59E0B"
-          bgColor="#fffbeb"
-        />
-        <StatCard
-          icon={FaThumbsUp}
-          title="Approved"
-          value={stats.approved}
-          color="#10B981"
-          bgColor="#d1fae5"
-        />
-        <StatCard
-          icon={FaThumbsDown}
-          title="Rejected"
-          value={stats.rejected}
-          color="#EF4444"
-          bgColor="#fee2e2"
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard icon={FaStar} title="Total Reviews" value={stats.total} color="#8B5CF6" bgColor="#f5f3ff" />
+        <StatCard icon={FaClock} title="Pending" value={stats.pending} color="#F59E0B" bgColor="#fffbeb" />
+        <StatCard icon={FaThumbsUp} title="Approved" value={stats.approved} color="#10B981" bgColor="#d1fae5" />
+        <StatCard icon={FaThumbsDown} title="Rejected" value={stats.rejected} color="#EF4444" bgColor="#fee2e2" />
       </div>
 
-      {/* Rating Distribution */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '20px',
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
-        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
-          Rating Distribution
-        </h3>
-        <div style={{ display: 'grid', gap: '12px' }}>
-          {[5, 4, 3, 2, 1].map(rating => (
-            <div key={rating} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '60px' }}>
-                <FaStar color="#F59E0B" />
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                  {rating}
-                </span>
-              </div>
-              <div style={{ flex: 1, height: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
-                <div 
-                  style={{ 
-                    height: '100%', 
-                    backgroundColor: '#F59E0B',
-                    width: `${stats.total > 0 ? (stats.ratingDistribution[rating] / stats.total) * 100 : 0}%`
-                  }} 
-                />
-              </div>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: '#6b7280', width: '40px' }}>
-                {stats.ratingDistribution[rating]}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '20px',
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{
-          display: 'flex',
-          gap: '16px',
-          alignItems: 'flex-end',
-          flexWrap: 'wrap'
-        }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '300px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Search Reviews
-            </label>
-            <div style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <FaSearch style={{
-                position: 'absolute',
-                left: '12px',
-                color: '#9ca3af'
-              }} />
-              <input
-                type="text"
-                placeholder="Search by product name, reviewer name, email, or comment..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && fetchProductReviews()}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px 10px 36px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Search Reviews</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <FaSearch style={{ position: 'absolute', left: '12px', color: '#9ca3af' }} />
+              <input 
+                type="text" 
+                placeholder="Search by product name, reviewer name, email, or comment..." 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                onKeyPress={(e) => e.key === 'Enter' && fetchProductReviews()} 
+                style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', outline: 'none' }} 
               />
             </div>
           </div>
           
           <div style={{ minWidth: '180px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Rating Filter
-            </label>
-            <select
-              value={ratingFilter}
-              onChange={(e) => setRatingFilter(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: 'white',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Rating Filter</label>
+            <select value={ratingFilter} onChange={(e) => setRatingFilter(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', outline: 'none', cursor: 'pointer' }}>
               <option value="all">All Ratings</option>
               <option value="5">5 Stars</option>
               <option value="4">4 Stars</option>
@@ -5052,29 +3057,8 @@ const ProductReviewsTab = () => {
           </div>
           
           <div style={{ minWidth: '180px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Status Filter
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: 'white',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Status Filter</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', outline: 'none', cursor: 'pointer' }}>
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
@@ -5082,268 +3066,84 @@ const ProductReviewsTab = () => {
             </select>
           </div>
           
-          <button
-            onClick={() => {
-              setSearch('');
-              setRatingFilter('all');
-              setStatusFilter('all');
-              fetchProductReviews();
-            }}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <FaFilter />
-            Clear Filters
+          <button onClick={() => { setSearch(''); setRatingFilter('all'); setStatusFilter('all'); fetchProductReviews(); }} style={{ padding: '10px 16px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaFilter /> Clear Filters
           </button>
         </div>
       </div>
 
-      {/* Reviews List */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         {loading ? (
-          <div style={{ 
-            padding: '48px 16px', 
-            textAlign: 'center' 
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: '4px solid #e5e7eb',
-              borderTop: '4px solid #3b82f6',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 16px auto'
-            }} />
+          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
+            <div style={{ width: '40px', height: '40px', border: '4px solid #e5e7eb', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px auto' }} />
             <p style={{ color: '#6b7280' }}>Loading product reviews...</p>
           </div>
         ) : reviews.length === 0 ? (
-          <div style={{ 
-            padding: '48px 16px', 
-            textAlign: 'center' 
-          }}>
+          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
             <FaStar size={48} color="#d1d5db" />
-            <h3 style={{ 
-              margin: '16px 0 8px 0', 
-              color: '#111827', 
-              fontSize: '18px' 
-            }}>
-              No Product Reviews Found
-            </h3>
-            <p style={{ 
-              color: '#6b7280', 
-              fontSize: '14px',
-              margin: 0 
-            }}>
-              {search ? 'No reviews match your search criteria' : 'No product reviews available yet'}
-            </p>
+            <h3 style={{ margin: '16px 0 8px 0', color: '#111827', fontSize: '18px' }}>No Product Reviews Found</h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>{search ? 'No reviews match your search criteria' : 'No product reviews available yet'}</p>
           </div>
         ) : (
           reviews.map((review) => {
             const userName = review.user_name || 'Anonymous';
-            const userEmail = review.user_email || '';
-            const productName = review.products?.name || `Product #${review.product_id}`;
-            const productImage = review.products?.image_url;
+            const productName = `Review #${review.id.substring(0, 8)}`;
+            const hasReply = !!replies[review.id];
             
             return (
-              <div key={review.id} style={{
-                padding: '20px',
-                borderBottom: '1px solid #e5e7eb',
-                transition: 'background-color 0.2s ease',
-                ':hover': {
-                  backgroundColor: '#f9fafb'
-                }
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: '20px'
-                }}>
-                  {/* Review Content */}
+              <div key={review.id} style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '12px'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FaShoppingBag size={16} color="#6b7280" />
-                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
-                          {productName}
-                        </span>
+                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>{productName}</span>
                       </div>
                       <ReviewStatusBadge status={review.status} />
-                      <span style={{
-                        fontSize: '12px',
-                        color: '#6b7280',
-                        marginLeft: 'auto'
-                      }}>
-                        {new Date(review.created_at).toLocaleDateString()}
-                      </span>
+                      {hasReply && <span style={{ fontSize: '11px', backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: '10px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}><FaReply size={10} /> Replied</span>}
+                      <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>{new Date(review.created_at).toLocaleDateString()}</span>
                     </div>
                     
-                    {/* Reviewer & Rating */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '12px'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FaUserCircle size={14} color="#6b7280" />
-                        <span style={{ fontSize: '14px', color: '#374151' }}>
-                          {userName}
-                        </span>
-                        {userEmail && (
-                          <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                            ({userEmail})
-                          </span>
-                        )}
+                        <span style={{ fontSize: '14px', color: '#374151' }}>{userName}</span>
                       </div>
                       <StarRating rating={review.rating} size={14} />
                     </div>
                     
-                    {/* Comment Preview */}
                     {review.comment && (
-                      <p style={{
-                        fontSize: '14px',
-                        color: '#4b5563',
-                        lineHeight: '1.5',
-                        margin: '12px 0',
-                        backgroundColor: '#f9fafb',
-                        padding: '12px',
-                        borderRadius: '6px'
-                      }}>
+                      <p style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.5', margin: '12px 0', backgroundColor: '#f9fafb', padding: '12px', borderRadius: '6px' }}>
                         {review.comment.length > 200 ? `${review.comment.substring(0, 200)}...` : review.comment}
                       </p>
                     )}
                   </div>
                   
-                  {/* Actions */}
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    minWidth: '140px'
-                  }}>
-                    <button
-                      onClick={() => {
-                        setSelectedReview(review);
-                        setShowDetails(true);
-                      }}
-                      style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <FaEye size={12} />
-                      View Details
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '140px' }}>
+                    <button onClick={() => { setSelectedReview(review); setShowDetails(true); }} style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <FaEye size={12} /> View Details
+                    </button>
+                    
+                    <button onClick={() => { setSelectedReview(review); setShowReplyModal(true); }} style={{ padding: '8px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <FaReply size={12} /> {hasReply ? 'Edit Reply' : 'Reply'}
                     </button>
                     
                     {review.status === 'pending' && (
                       <>
-                        <button
-                          onClick={() => updateReviewStatus(review.id, 'approved')}
-                          style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#10b981',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <FaThumbsUp size={12} />
-                          Approve
+                        <button onClick={() => updateReviewStatus(review.id, 'approved')} style={{ padding: '8px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <FaThumbsUp size={12} /> Approve
                         </button>
                         
-                        <button
-                          onClick={() => updateReviewStatus(review.id, 'rejected')}
-                          style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#fef2f2',
-                            color: '#dc2626',
-                            border: '1px solid #fecaca',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <FaThumbsDown size={12} />
-                          Reject
+                        <button onClick={() => updateReviewStatus(review.id, 'rejected')} style={{ padding: '8px 12px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <FaThumbsDown size={12} /> Reject
                         </button>
                       </>
                     )}
                     
-                    <button
-                      onClick={() => deleteProductReview(review.id)}
-                      style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#fef2f2',
-                        color: '#dc2626',
-                        border: '1px solid #fecaca',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <FaTrash size={12} />
-                      Delete
+                    <button onClick={() => deleteProductReview(review.id)} style={{ padding: '8px 12px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <FaTrash size={12} /> Delete
                     </button>
                   </div>
                 </div>
@@ -5353,8 +3153,519 @@ const ProductReviewsTab = () => {
         )}
       </div>
 
-      {/* Review Details Modal */}
       {showDetails && selectedReview && renderProductReviewDetails(selectedReview)}
+      {showReplyModal && selectedReview && (
+        <ReviewReplyModal
+          review={selectedReview}
+          onClose={() => {
+            setShowReplyModal(false);
+            setSelectedReview(null);
+          }}
+          onReplySent={() => {
+            handleReplySent();
+            setShowReplyModal(false);
+            setSelectedReview(null);
+          }}
+          isServiceReview={false}
+        />
+      )}
+    </div>
+  );
+};
+
+// ====================
+// SERVICE REVIEWS TAB COMPONENT (FIXED)
+// ====================
+
+const ServiceReviewsTab = () => {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [ratingFilter, setRatingFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [selectedReview, setSelectedReview] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [showReplyModal, setShowReplyModal] = useState(false);
+  const [replies, setReplies] = useState({});
+
+  useEffect(() => {
+    fetchServiceReviews();
+  }, [ratingFilter, search]);
+
+  const fetchServiceReviews = async () => {
+    try {
+      setLoading(true);
+      
+      let query = supabase
+        .from('service_reviews')
+        .select(`
+          *,
+          services (
+            id,
+            name,
+            description,
+            price,
+            duration
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ratingFilter !== 'all') {
+        query = query.eq('rating', parseInt(ratingFilter));
+      }
+
+      if (search) {
+        query = query.or(`
+          comment.ilike.%${search}%,
+          user_name.ilike.%${search}%,
+          user_email.ilike.%${search}%,
+          services.name.ilike.%${search}%
+        `);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching service reviews:', error);
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('service_reviews')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (simpleError) throw simpleError;
+        setReviews(simpleData || []);
+      } else {
+        setReviews(data || []);
+        await fetchAllReplies(data || []);
+      }
+
+    } catch (error) {
+      console.error('Error fetching service reviews:', error);
+      alert('Error loading service reviews: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAllReplies = async (reviewsData) => {
+    try {
+      const replyPromises = reviewsData.map(review => 
+        supabase
+          .from('service_review_replies')
+          .select('*')
+          .eq('review_id', review.id)
+          .maybeSingle()
+      );
+      
+      const results = await Promise.all(replyPromises);
+      const repliesMap = {};
+      results.forEach((result, index) => {
+        if (result.data) {
+          repliesMap[reviewsData[index].id] = result.data;
+        }
+      });
+      setReplies(repliesMap);
+    } catch (error) {
+      console.error('Error fetching replies:', error);
+    }
+  };
+
+  // FIXED: Proper delete function for service reviews
+  const deleteServiceReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) return;
+    
+    try {
+      // Delete replies associated with this service review
+      const { error: repliesError } = await supabase
+        .from('service_review_replies')
+        .delete()
+        .eq('review_id', reviewId);
+      
+      if (repliesError) {
+        console.error('Error deleting replies:', repliesError);
+      }
+
+      // Delete conversations if they exist for service reviews
+      const { error: conversationsError } = await supabase
+        .from('service_review_conversations')
+        .delete()
+        .eq('review_id', reviewId);
+      
+      if (conversationsError && conversationsError.code !== '42P01') {
+        console.error('Error deleting conversations:', conversationsError);
+      }
+
+      // Delete the service review itself
+      const { error } = await supabase
+        .from('service_reviews')
+        .delete()
+        .eq('id', reviewId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setReviews(prev => prev.filter(review => review.id !== reviewId));
+      
+      if (selectedReview?.id === reviewId) {
+        setShowDetails(false);
+        setSelectedReview(null);
+      }
+      
+      alert('Service review and all associated replies deleted successfully!');
+      
+      // Refresh the list
+      await fetchServiceReviews();
+      
+    } catch (error) {
+      console.error('Error deleting service review:', error);
+      alert('Error deleting service review: ' + error.message);
+    }
+  };
+
+  const handleReplySent = () => {
+    fetchServiceReviews();
+  };
+
+  const getServiceReviewStats = () => {
+    const total = reviews.length;
+    const averageRating = total > 0 
+      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / total 
+      : 0;
+    
+    const ratingDistribution = {
+      5: reviews.filter(r => r.rating === 5).length,
+      4: reviews.filter(r => r.rating === 4).length,
+      3: reviews.filter(r => r.rating === 3).length,
+      2: reviews.filter(r => r.rating === 2).length,
+      1: reviews.filter(r => r.rating === 1).length
+    };
+    
+    const verifiedReviews = reviews.filter(r => r.is_verified_service).length;
+    
+    return { total, averageRating, ratingDistribution, verifiedReviews };
+  };
+
+  const stats = getServiceReviewStats();
+
+  const renderServiceReviewDetails = (review) => {
+    const userName = review.user_name || 'Anonymous';
+    const userEmail = review.user_email || 'N/A';
+    const serviceName = review.services?.name || `Service #${review.service_id}`;
+    const isVerified = review.is_verified_service ? '✅ Verified Service' : '';
+    const hasReply = !!replies[review.id];
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '30px',
+          maxWidth: '600px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
+              Service Review Details
+            </h3>
+            <button
+              onClick={() => setShowDetails(false)}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          <div style={{
+            backgroundColor: '#f9fafb',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Service</div>
+              <div style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>{serviceName}</div>
+            </div>
+            
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Reviewer</div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>{userName}</div>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>{userEmail}</div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Rating</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <StarRating rating={review.rating} />
+                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>{review.rating}/5</span>
+                </div>
+                {isVerified && (
+                  <div style={{ fontSize: '12px', color: '#10b981', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {isVerified}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Date & Time</div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
+                  {new Date(review.created_at).toLocaleDateString()} at {new Date(review.created_at).toLocaleTimeString()}
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Helpful Votes</div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <FaThumbsUp size={16} /> {review.helpful_count || 0}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {review.comment && (
+            <div style={{ marginBottom: '24px' }}>
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>Review Comment</h4>
+              <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <p style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>{review.comment}</p>
+              </div>
+            </div>
+          )}
+
+          {hasReply && (
+            <div style={{ marginBottom: '24px' }}>
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#10b981', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaReply /> Admin Reply
+              </h4>
+              <div style={{ backgroundColor: '#f0fdf4', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+                <p style={{ fontSize: '14px', color: '#065f46', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {replies[review.id].reply_text}
+                </p>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                  Replied on: {new Date(replies[review.id].created_at).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => {
+                setSelectedReview(review);
+                setShowReplyModal(true);
+                setShowDetails(false);
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaReply />
+              {hasReply ? 'Edit Reply' : 'Reply to Review'}
+            </button>
+            
+            <button
+              onClick={() => deleteServiceReview(review.id)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaTrash />
+              Delete Review
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px'
+      }}>
+        <div>
+          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: '0 0 4px 0' }}>Service Reviews</h2>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>View and manage service reviews</p>
+        </div>
+        
+        <button onClick={fetchServiceReviews} style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FaSync /> Refresh
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard icon={FaComment} title="Service Reviews" value={stats.total} color="#3b82f6" bgColor="#eff6ff" />
+        <StatCard icon={FaStar} title="Avg. Rating" value={stats.averageRating.toFixed(1)} color="#F59E0B" bgColor="#fffbeb" />
+        <StatCard icon={FaTools} title="Services Reviewed" value={new Set(reviews.map(r => r.service_id)).size} color="#EC4899" bgColor="#fce7f3" />
+        <StatCard icon={FaShieldAlt} title="Verified Reviews" value={stats.verifiedReviews} color="#10B981" bgColor="#d1fae5" />
+      </div>
+
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '300px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Search Service Reviews</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <FaSearch style={{ position: 'absolute', left: '12px', color: '#9ca3af' }} />
+              <input type="text" placeholder="Search by service name, reviewer name, email, or comment..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchServiceReviews()} style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', outline: 'none' }} />
+            </div>
+          </div>
+          
+          <div style={{ minWidth: '180px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Rating Filter</label>
+            <select value={ratingFilter} onChange={(e) => setRatingFilter(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: 'white', outline: 'none', cursor: 'pointer' }}>
+              <option value="all">All Ratings</option>
+              <option value="5">5 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="2">2 Stars</option>
+              <option value="1">1 Star</option>
+            </select>
+          </div>
+          
+          <button onClick={() => { setSearch(''); setRatingFilter('all'); fetchServiceReviews(); }} style={{ padding: '10px 16px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaFilter /> Clear Filters
+          </button>
+        </div>
+      </div>
+
+      <div style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        {loading ? (
+          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
+            <div style={{ width: '40px', height: '40px', border: '4px solid #e5e7eb', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px auto' }} />
+            <p style={{ color: '#6b7280' }}>Loading service reviews...</p>
+          </div>
+        ) : reviews.length === 0 ? (
+          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
+            <FaTools size={48} color="#d1d5db" />
+            <h3 style={{ margin: '16px 0 8px 0', color: '#111827', fontSize: '18px' }}>No Service Reviews Found</h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>{search ? 'No service reviews match your search criteria' : 'No service reviews available yet'}</p>
+          </div>
+        ) : (
+          reviews.map((review) => {
+            const userName = review.user_name || 'Anonymous';
+            const serviceName = review.services?.name || `Service #${review.service_id}`;
+            const isVerified = review.is_verified_service;
+            const hasReply = !!replies[review.id];
+            
+            return (
+              <div key={review.id} style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', transition: 'background-color 0.2s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FaTools size={16} color="#6b7280" />
+                        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>{serviceName}</span>
+                      </div>
+                      {isVerified && <span style={{ fontSize: '11px', backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>✓ Verified Service</span>}
+                      {hasReply && <span style={{ fontSize: '11px', backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: '10px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}><FaReply size={10} /> Replied</span>}
+                      <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>{new Date(review.created_at).toLocaleDateString()}</span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FaUserCircle size={14} color="#6b7280" />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>{userName}</span>
+                      </div>
+                      <StarRating rating={review.rating} size={14} />
+                      {review.helpful_count > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
+                          <FaThumbsUp size={10} /> {review.helpful_count}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {review.comment && (
+                      <p style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.5', margin: '12px 0', backgroundColor: '#f9fafb', padding: '12px', borderRadius: '6px' }}>
+                        {review.comment.length > 200 ? `${review.comment.substring(0, 200)}...` : review.comment}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '140px' }}>
+                    <button onClick={() => { setSelectedReview(review); setShowDetails(true); }} style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <FaEye size={12} /> View Details
+                    </button>
+                    
+                    <button onClick={() => { setSelectedReview(review); setShowReplyModal(true); }} style={{ padding: '8px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <FaReply size={12} /> {hasReply ? 'Edit Reply' : 'Reply'}
+                    </button>
+                    
+                    <button onClick={() => deleteServiceReview(review.id)} style={{ padding: '8px 12px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <FaTrash size={12} /> Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {showDetails && selectedReview && renderServiceReviewDetails(selectedReview)}
+      {showReplyModal && selectedReview && (
+        <ReviewReplyModal
+          review={selectedReview}
+          onClose={() => {
+            setShowReplyModal(false);
+            setSelectedReview(null);
+          }}
+          onReplySent={() => {
+            handleReplySent();
+            setShowReplyModal(false);
+            setSelectedReview(null);
+          }}
+          isServiceReview={true}
+        />
+      )}
     </div>
   );
 };
@@ -5362,6 +3673,7 @@ const ProductReviewsTab = () => {
 // ====================
 // MAIN SALES MANAGEMENT COMPONENT
 // ====================
+
 const SalesManagement = () => {
   const [activeTab, setActiveTab] = useState('orders');
   const [loading, setLoading] = useState(true);
@@ -5385,27 +3697,22 @@ const SalesManagement = () => {
     upcomingBookings: 0
   });
 
-  // Fetch all statistics
   const fetchAllStats = useCallback(async () => {
     try {
       setRefreshing(true);
       
-      // Fetch product reviews stats from 'reviews' table
       const { data: productReviews, error: productError } = await supabase
         .from('reviews')
         .select('rating, status');
       
-      // Fetch service reviews stats from 'service_reviews' table
       const { data: serviceReviews, error: serviceError } = await supabase
         .from('service_reviews')
         .select('rating, status');
 
-      // Fetch order stats
       const { data: orders, error: orderError } = await supabase
         .from('orders')
         .select('status, total');
 
-      // Fetch booking stats
       const { data: bookings, error: bookingError } = await supabase
         .from('bookings')
         .select('status, booking_date');
@@ -5420,7 +3727,6 @@ const SalesManagement = () => {
       const ordersData = orders || [];
       const bookingsData = bookings || [];
 
-      // Calculate review stats
       const pendingProductReviews = productReviewsData.filter(r => r.status === 'pending').length;
       const pendingServiceReviews = serviceReviewsData.filter(r => r.status === 'pending').length;
       
@@ -5432,13 +3738,11 @@ const SalesManagement = () => {
         ? serviceReviewsData.reduce((sum, r) => sum + (r.rating || 0), 0) / serviceReviewsData.length
         : 0;
 
-      // Calculate order stats
       const pendingOrders = ordersData.filter(o => o.status === 'pending').length;
       const totalRevenue = ordersData
         .filter(o => o.status === 'completed' || o.status === 'confirmed')
         .reduce((sum, o) => sum + (o.total || 0), 0);
 
-      // Calculate booking stats
       const pendingBookings = bookingsData.filter(b => b.status === 'pending').length;
       const upcomingBookings = bookingsData.filter(b => 
         b.status === 'confirmed' && 
@@ -5474,7 +3778,6 @@ const SalesManagement = () => {
     }
   }, []);
 
-  // Initial fetch
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -5491,115 +3794,31 @@ const SalesManagement = () => {
     { key: 'service-reviews', icon: <FaTools />, label: 'Service Reviews', badge: reviewStats.pendingServiceReviews },
   ];
 
-  // Loading state for the entire component
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '400px',
-        flexDirection: 'column',
-        gap: '20px',
-        background: '#f9fafb'
-      }}>
-        <style>
-          {`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}
-        </style>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '4px solid #e5e7eb',
-          borderTop: '4px solid #3b82f6',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <div style={{ color: '#6b7280', fontSize: '16px' }}>
-          Loading sales data...
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px', flexDirection: 'column', gap: '20px', background: '#f9fafb' }}>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        <div style={{ width: '50px', height: '50px', border: '4px solid #e5e7eb', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <div style={{ color: '#6b7280', fontSize: '16px' }}>Loading sales data...</div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      background: '#f8fafc',
-      minHeight: '100vh',
-      padding: '24px',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-    }}>
-      <style>
-        {`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}
-      </style>
+    <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '24px', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
+      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
       
-      {/* Header */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
-        borderRadius: '16px',
-        padding: '32px',
-        marginBottom: '24px',
-        boxShadow: '0 10px 25px rgba(30, 58, 138, 0.15)',
-        color: 'white',
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
+      <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)', borderRadius: '16px', padding: '32px', marginBottom: '24px', boxShadow: '0 10px 25px rgba(30, 58, 138, 0.15)', color: 'white' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1 style={{
-              fontSize: '32px',
-              fontWeight: '800',
-              margin: '0 0 8px 0',
-              display: 'flex',
-              alignItems: 'center',
-              letterSpacing: '-0.5px',
-            }}>
+            <h1 style={{ fontSize: '32px', fontWeight: '800', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', letterSpacing: '-0.5px' }}>
               <FaShoppingBag style={{ marginRight: '12px' }} />
               Sales & Reviews Management
             </h1>
-            <p style={{
-              fontSize: '16px',
-              opacity: 0.9,
-              margin: 0,
-              fontWeight: '400'
-            }}>
-              Manage orders, bookings, and customer reviews in one place
-            </p>
+            <p style={{ fontSize: '16px', opacity: 0.9, margin: 0, fontWeight: '400' }}>Manage orders, bookings, and customer reviews in one place</p>
           </div>
-          <div style={{
-            display: 'flex',
-            gap: '16px',
-            alignItems: 'center',
-          }}>
-            <button
-              onClick={() => {
-                setRefreshing(true);
-                fetchAllStats().finally(() => {
-                  setRefreshing(false);
-                });
-              }}
-              disabled={refreshing}
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                opacity: refreshing ? 0.7 : 1
-              }}
-            >
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <button onClick={() => { setRefreshing(true); fetchAllStats().finally(() => setRefreshing(false)); }} disabled={refreshing} style={{ background: 'rgba(255, 255, 255, 0.2)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.3)', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500', opacity: refreshing ? 0.7 : 1 }}>
               <FaSync style={refreshing ? { animation: 'spin 1s linear infinite' } : {}} />
               {refreshing ? 'Refreshing...' : 'Refresh All'}
             </button>
@@ -5607,119 +3826,26 @@ const SalesManagement = () => {
         </div>
       </div>
 
-      {/* Stats Summary */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
-        <StatCard
-          icon={FaShoppingBag}
-          title="Total Orders"
-          value={orderStats.totalOrders}
-          color="#3b82f6"
-          bgColor="#eff6ff"
-          subtitle={`${orderStats.pendingOrders}  • ₱${orderStats.totalRevenue.toLocaleString()} revenue`}
-          onClick={() => setActiveTab('orders')}
-        />
-        <StatCard
-          icon={FaCalendarCheck}
-          title="Total Bookings"
-          value={bookingStats.totalBookings}
-          color="#EC4899"
-          bgColor="#fce7f3"
-          subtitle={`${bookingStats.pendingBookings} pending • ${bookingStats.upcomingBookings} upcoming`}
-          onClick={() => setActiveTab('bookings')}
-        />
-        <StatCard
-          icon={FaStar}
-          title="Product Reviews"
-          value={reviewStats.productReviews}
-          color="#8B5CF6"
-          bgColor="#f5f3ff"
-          subtitle={`${reviewStats.pendingProductReviews} pending • Avg: ${reviewStats.averageProductRating.toFixed(1)}⭐`}
-          onClick={() => setActiveTab('product-reviews')}
-        />
-        <StatCard
-          icon={FaTools}
-          title="Service Reviews"
-          value={reviewStats.serviceReviews}
-          color="#10B981"
-          bgColor="#d1fae5"
-          subtitle={`${reviewStats.pendingServiceReviews} pending • Avg: ${reviewStats.averageServiceRating.toFixed(1)}⭐`}
-          onClick={() => setActiveTab('service-reviews')}
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard icon={FaShoppingBag} title="Total Orders" value={orderStats.totalOrders} color="#3b82f6" bgColor="#eff6ff" subtitle={`${orderStats.pendingOrders} pending • ₱${orderStats.totalRevenue.toLocaleString()} revenue`} onClick={() => setActiveTab('orders')} />
+        <StatCard icon={FaCalendarCheck} title="Total Bookings" value={bookingStats.totalBookings} color="#EC4899" bgColor="#fce7f3" subtitle={`${bookingStats.pendingBookings} pending • ${bookingStats.upcomingBookings} upcoming`} onClick={() => setActiveTab('bookings')} />
+        <StatCard icon={FaStar} title="Product Reviews" value={reviewStats.productReviews} color="#8B5CF6" bgColor="#f5f3ff" subtitle={`${reviewStats.pendingProductReviews} pending • Avg: ${reviewStats.averageProductRating.toFixed(1)}⭐`} onClick={() => setActiveTab('product-reviews')} />
+        <StatCard icon={FaTools} title="Service Reviews" value={reviewStats.serviceReviews} color="#10B981" bgColor="#d1fae5" subtitle={`${reviewStats.pendingServiceReviews} pending • Avg: ${reviewStats.averageServiceRating.toFixed(1)}⭐`} onClick={() => setActiveTab('service-reviews')} />
       </div>
 
-      {/* Tabs */}
-      <div style={{
-        display: 'flex',
-        background: 'white',
-        borderRadius: '12px',
-        padding: '8px',
-        marginBottom: '24px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-        overflowX: 'auto',
-      }}>
+      <div style={{ display: 'flex', background: 'white', borderRadius: '12px', padding: '8px', marginBottom: '24px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)', overflowX: 'auto' }}>
         {tabs.map(tab => (
-          <button
-            key={tab.key}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '16px 24px',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '15px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap',
-              flex: 1,
-              justifyContent: 'center',
-              minWidth: '140px',
-              position: 'relative',
-              background: activeTab === tab.key ? 'linear-gradient(135deg, #0077b6 0%, #00b4d8 100%)' : 'transparent',
-              color: activeTab === tab.key ? '#ffffff' : '#023e8a',
-            }}
-            onClick={() => setActiveTab(tab.key)}
-          >
+          <button key={tab.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 24px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '600', transition: 'all 0.2s', whiteSpace: 'nowrap', flex: 1, justifyContent: 'center', minWidth: '140px', position: 'relative', background: activeTab === tab.key ? 'linear-gradient(135deg, #0077b6 0%, #00b4d8 100%)' : 'transparent', color: activeTab === tab.key ? '#ffffff' : '#023e8a' }} onClick={() => setActiveTab(tab.key)}>
             <span style={{ fontSize: '18px' }}>{tab.icon}</span>
             <span style={{ fontSize: '15px' }}>{tab.label}</span>
             {tab.badge > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '-6px',
-                right: '-6px',
-                background: '#ef4444',
-                color: 'white',
-                fontSize: '12px',
-                fontWeight: '700',
-                minWidth: '20px',
-                height: '20px',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '2px'
-              }}>
-                {tab.badge}
-              </span>
+              <span style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', color: 'white', fontSize: '12px', fontWeight: '700', minWidth: '20px', height: '20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' }}>{tab.badge}</span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Content */}
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '32px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-        minHeight: '500px'
-      }}>
+      <div style={{ background: 'white', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', minHeight: '500px' }}>
         {activeTab === 'orders' && <OrdersManagementTab />}
         {activeTab === 'bookings' && <BookingsManagementTab />}
         {activeTab === 'product-reviews' && <ProductReviewsTab />}
